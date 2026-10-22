@@ -1,6 +1,6 @@
 /* Party Machines Booth — offline shell. Bump VERSION to force an update. */
-const VERSION = 'pmb-v33';
-const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icon-180.png', 'icon-192.png', 'icon-512.png'];
+const VERSION = 'pmb-v34';
+const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icon-180.png', 'icon-192.png', 'icon-512.png', 'logo.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));

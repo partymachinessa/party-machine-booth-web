@@ -10,6 +10,7 @@
 <meta name="theme-color" content="#050b1f">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
 <title>Party Machines Booth</title>
 <style>
 :root{
@@ -141,7 +142,8 @@ video.player{width:100%;max-height:52vh;aspect-ratio:9/16;object-fit:contain;bac
 .modal.show{display:flex}
 
 .welcome{display:flex;flex-direction:column;align-items:center;gap:6px;padding:22px 0 6px;text-align:center}
-.welcome .mark{width:84px;height:84px;border-radius:22px;margin-bottom:8px}
+.welcome .mark{width:150px;height:150px;border-radius:50%;margin-bottom:4px;filter:drop-shadow(0 6px 24px rgba(47,123,255,.35))}
+.mark{border-radius:50%}
 .welcome h1{font-size:40px}
 .btn.big{min-height:66px;font-size:19px;border-radius:20px}
 .home{min-height:calc(100vh - 60px)}
@@ -163,7 +165,7 @@ details.past .list-item{margin-top:8px;background:var(--panel2)}
 
 <!-- ===== HOME ===== -->
 <section id="s-home" class="screen active"><div class="wrap home">
-  <div class="welcome"><img class="mark" src="icon-192.png" alt=""><h1>Welcome</h1><div class="sub">Party Machines Booth</div></div>
+  <div class="welcome"><img class="mark" src="logo.png" alt="Party Machines 360 logo" width="150" height="150"><h1>Welcome</h1><div class="sub">Party Machines Booth</div></div>
   <div id="h-resume"></div>
   <button class="btn primary big" id="h-new">Start new event</button>
   <button class="btn ghost" id="h-defaults">Default settings &amp; PIN</button>
@@ -243,7 +245,7 @@ details.past .list-item{margin-top:8px;background:var(--panel2)}
     <button class="btn ghost hidden" id="p-skip" style="width:auto;min-height:44px">Skip effects and continue</button>
   </div>
   <div id="b-resume" class="layer hidden">
-    <img class="mark" src="icon-192.png" alt="" style="width:72px;height:72px;border-radius:18px">
+    <img class="mark" src="icon-192.png" alt="" style="width:96px;height:96px">
     <div class="hero" style="font-size:30px"><span id="b-evname">Booth</span><small>Tap to switch the camera on</small></div>
     <div id="b-status" class="hidden"></div>
     <button class="tapbtn" id="b-go">START BOOTH</button>
@@ -507,7 +509,7 @@ function renderPinCard() {
 
 /* ---------------- home ---------------- */
 const allEvents = async () => (await DB.all('events')).sort((a, b) => b.createdAt - a.createdAt);
-const APP_VERSION = '3.3';
+const APP_VERSION = '3.4';
 async function renderHome() {
   const evs = await allEvents();
   const rb = $('#h-resume'); rb.innerHTML = ''; const kid = localStorage.getItem('kiosk');
