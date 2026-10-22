@@ -380,9 +380,11 @@ details.past .list-item{margin-top:8px;background:var(--panel2)}
   <div class="seg2 hidden" id="r-tabs"><button data-v="main" class="on">With template</button><button data-v="plain">Plain</button></div>
   <video class="player" id="r-video" playsinline muted loop controls></video>
   <div class="sub" id="r-note" style="text-align:center"></div>
-  <button class="btn big hidden" id="r-qr">Get a QR code to download</button>
-  <div class="sub" id="r-qrmsg" style="text-align:center;margin-top:-6px"></div>
-  <button class="btn primary big" id="r-share">Share · AirDrop · WhatsApp · Save to Photos</button>
+  <div style="display:flex;gap:10px;align-items:stretch">
+    <button class="btn primary big" id="r-share" style="flex:1">Share · AirDrop · WhatsApp · Save to Photos</button>
+    <button class="btn hidden" id="r-qr" style="flex:0 0 auto;width:auto;padding:0 16px;font-size:14px;line-height:1.2">Share as<br>QR code</button>
+  </div>
+  <div class="sub" id="r-qrmsg" style="text-align:center"></div>
   <div class="sub" id="r-sharehint" style="text-align:center;margin-top:-6px;color:var(--accent)"></div>
   <div class="sub" style="text-align:center;margin-top:-6px">In the share sheet choose <b>Save Video</b> to put it in Photos. Tap the video for sound.</div>
   <div class="card lead hidden" id="r-lead">
@@ -843,7 +845,7 @@ function renderPinCard() {
 
 /* ---------------- home ---------------- */
 const allEvents = async () => (await DB.all('events')).sort((a, b) => b.createdAt - a.createdAt);
-const APP_VERSION = '4.6';
+const APP_VERSION = '4.7';
 async function renderHome() {
   const evs = await allEvents();
   const rb = $('#h-resume'); rb.innerHTML = ''; const kid = localStorage.getItem('kiosk');
@@ -1797,13 +1799,13 @@ const DRIVE = (() => {
   $('#qr-close').onclick = () => $('#qr-modal').classList.remove('show');
   async function updateButton() {
     await load(); const b = $('#r-qr'); if (!b) return; b.classList.toggle('hidden', !cfg.clientId);
-    b.textContent = CLIP && CLIP.driveUrl ? 'Show QR code' : 'Get a QR code to download'; $('#r-qrmsg').textContent = '';
+    b.innerHTML = 'Share as<br>QR code'; $('#r-qrmsg').textContent = '';
   }
   $('#r-qr').onclick = async () => {
     const b = $('#r-qr'), msg = $('#r-qrmsg'); if (!CLIP) return;
     if (!online()) { msg.textContent = 'No internet right now. Use Share instead.'; return; }
     REV.paused = true; b.disabled = true;
-    try { msg.textContent = 'Uploading… 0%'; const url = await ensureLink(CLIP, EV, f => { msg.textContent = 'Uploading… ' + Math.round(f * 100) + '%'; }); msg.textContent = ''; b.textContent = 'Show QR code'; logDelivery('qr'); showQR(url); }
+    try { msg.textContent = 'Uploading… 0%'; const url = await ensureLink(CLIP, EV, f => { msg.textContent = 'Uploading… ' + Math.round(f * 100) + '%'; }); msg.textContent = ''; logDelivery('qr'); showQR(url); }
     catch (e) { msg.textContent = (e && e.message || 'Upload failed') + (e && e.status === 403 ? ' (Drive API not enabled?)' : ''); }
     finally { b.disabled = false; REV.paused = false; REV.left = EV.settings.autoReturn | 0; }
   };
