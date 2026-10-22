@@ -18,6 +18,8 @@ A 360-booth kiosk that runs in Safari and installs to the iPhone Home Screen. No
 
 **v4.1:** *Ready check* (camera, movement sensor, screen-awake, storage, battery, waiting screen); screen stays awake while the booth runs (Wake Lock, with a silent-video fallback for older iPhones); a *Waiting screen* that plays your photos/videos when nobody is using the booth and switches to the camera on movement or a tap; 60 fps capture that never trades away the full 3:4 view; Videos thumbnails show the 3rd second.
 
+**v4.2:** *Countdown beeps* on the speaker (a short beep each second, then one long beep when recording starts — never recorded); *Smooth slow-motion* (blends neighbouring frames); and **two videos per recording** — one with your photo, logo and text (the template) and one plain (speed effects + music only), rendered in a single pass. Review, sharing, Save-to-Photos batches and the .zip all handle both.
+
 **What works:** motion trigger + tap start, countdown ring, recording, speed-ramp / boomerang / no effect,
 border + logo overlay, music bed with fade, lead capture (email / WhatsApp), per-event library,
 highlight reel, Save-to-Photos batches via the share sheet, `.zip` and `leads.csv` export,
