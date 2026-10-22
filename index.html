@@ -132,47 +132,77 @@ video.player{width:100%;max-height:52vh;aspect-ratio:9/16;object-fit:contain;bac
 .toast.show{opacity:1;transform:translate(-50%,0)}
 .modal{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.92);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px}
 .modal.show{display:flex}
+
+.welcome{display:flex;flex-direction:column;align-items:center;gap:6px;padding:22px 0 6px;text-align:center}
+.welcome .mark{width:84px;height:84px;border-radius:22px;margin-bottom:8px}
+.welcome h1{font-size:40px}
+.btn.big{min-height:66px;font-size:19px;border-radius:20px}
+.home{min-height:calc(100vh - 60px)}
+.spacer{flex:1}
+details.past{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:2px 14px 14px}
+details.past summary{list-style:none;cursor:pointer;padding:14px 2px;font-weight:800;display:flex;justify-content:space-between;align-items:center}
+details.past summary::-webkit-details-marker{display:none}
+details.past summary::after{content:'▾';color:var(--pink);font-size:18px}
+details.past[open] summary::after{content:'▴'}
+details.past .list-item{margin-top:8px;background:var(--panel2)}
+.chk{display:flex;gap:10px;align-items:center;font-size:14px}
+.field label{display:block;font-size:13px;color:var(--mut);margin:2px 0 6px}
+#b-status{background:rgba(255,77,94,.16);border:1px solid rgba(255,77,94,.5);color:#ffd5d9;border-radius:14px;padding:12px 14px;font-size:14px;line-height:1.4;text-align:left;width:100%}
+.tapbtn.alt{display:flex;align-items:center;justify-content:center;background:transparent;color:#fff;border:2px solid rgba(255,255,255,.5);font-size:16px;letter-spacing:.02em;min-height:56px;text-align:center;padding:0 14px}
 @media (prefers-reduced-motion:reduce){.rings i,.recpill i{animation:none}}
 </style>
 </head>
 <body>
 
-<!-- ===== CONSOLE ===== -->
-<section id="s-console" class="screen active"><div class="wrap">
-  <div class="top"><img class="mark" src="icon-192.png" alt=""><div><h1>Party Machines Booth</h1><div class="sub" id="c-sub">Operator console</div></div></div>
-  <div id="c-live"></div>
-  <button class="btn" id="c-library">Library &amp; export</button>
-  <button class="btn" id="c-settings">Booth settings</button>
+<!-- ===== HOME ===== -->
+<section id="s-home" class="screen active"><div class="wrap home">
+  <div class="welcome"><img class="mark" src="icon-192.png" alt=""><h1>Welcome</h1><div class="sub">Party Machines Booth</div></div>
+  <button class="btn primary big" id="h-new">Start new event</button>
+  <button class="btn ghost" id="h-defaults">Default settings &amp; PIN</button>
+  <div class="spacer"></div>
+  <details class="past" id="h-past" open>
+    <summary><span>Past events <span class="sub" id="h-count"></span></span></summary>
+    <div id="h-list"></div>
+  </details>
+  <div class="sub" id="h-storage"></div>
+  <div class="sub" id="h-install"></div>
+</div></section>
+
+<!-- ===== SETTINGS FORM (new event / event settings / defaults) ===== -->
+<section id="s-form" class="screen"><div class="wrap">
+  <button class="back" id="f-back">‹ Back</button>
+  <h1 id="f-title"></h1>
+  <div id="f-top"></div>
+  <div id="f-body"></div>
+  <div id="f-pin" class="hidden"></div>
+  <button class="btn primary big" id="f-save">Save</button>
+</div></section>
+
+<!-- ===== EVENT HUB ===== -->
+<section id="s-hub" class="screen"><div class="wrap">
+  <button class="back" data-go="home">‹ Home</button>
+  <h1 id="hub-title">Event</h1>
+  <div class="sub" id="hub-sub"></div>
+  <button class="btn primary big" id="hub-record">● Start recording</button>
+  <button class="btn big" id="hub-videos">Videos <span id="hub-count" class="sub"></span></button>
   <div class="card">
-    <div class="sub" id="c-storage">Storage…</div>
-    <div class="sub" id="c-install"></div>
+    <h2 style="margin:0">This event</h2>
+    <button class="btn" id="hub-settings">Event settings</button>
+    <button class="btn" id="hub-copy">Copy settings to a new event</button>
+    <button class="btn" id="hub-rename">Rename</button>
+    <button class="btn danger" id="hub-delete">Delete event</button>
   </div>
 </div></section>
 
-<!-- ===== SETTINGS ===== -->
-<section id="s-settings" class="screen"><div class="wrap">
-  <button class="back" data-go="console">‹ Console</button>
-  <h1>Booth settings</h1>
-  <div class="sub">Used for every new event. A running event keeps the settings it started with.</div>
-  <div id="set-body"></div>
-  <button class="btn primary" id="set-save">Save settings</button>
-</div></section>
-
-<!-- ===== LIBRARY ===== -->
-<section id="s-library" class="screen"><div class="wrap">
-  <button class="back" data-go="console">‹ Console</button>
-  <h1>Library</h1>
-  <div id="lib-list" style="display:flex;flex-direction:column;gap:10px"></div>
-</div></section>
-
-<section id="s-event" class="screen"><div class="wrap">
-  <button class="back" data-go="library">‹ Library</button>
-  <h1 id="ev-title">Event</h1>
+<!-- ===== VIDEOS ===== -->
+<section id="s-videos" class="screen"><div class="wrap">
+  <button class="back" id="v-back">‹ Event</button>
+  <h1 id="ev-title">Videos</h1>
   <div class="sub" id="ev-sub"></div>
   <div class="card" id="ev-actions"></div>
   <div class="card">
     <h2 style="margin:0">Highlight reel</h2>
-    <div class="sub">Every clip from the event stitched into one video under your music.</div>
+    <div class="sub">Every video from the event stitched into one, under your music.</div>
     <div id="ev-reel" style="display:flex;flex-direction:column;gap:10px"></div>
   </div>
   <div class="grid" id="ev-grid"></div>
@@ -200,9 +230,12 @@ video.player{width:100%;max-height:52vh;aspect-ratio:9/16;object-fit:contain;bac
     <div style="font-weight:700">Working on it…</div>
   </div>
   <div id="b-resume" class="layer hidden">
-    <img class="mark" src="icon-192.png" alt="" style="width:72px;height:72px">
-    <div class="hero" style="font-size:30px">Booth ready<small>Tap to switch the camera on</small></div>
+    <img class="mark" src="icon-192.png" alt="" style="width:72px;height:72px;border-radius:18px">
+    <div class="hero" style="font-size:30px"><span id="b-evname">Booth</span><small>Tap to switch the camera on</small></div>
+    <div id="b-status" class="hidden"></div>
     <button class="tapbtn" id="b-go">START BOOTH</button>
+    <label class="tapbtn alt" for="b-file">Camera not working? Record with the phone’s camera</label>
+    <input type="file" id="b-file" accept="video/*" capture="user" hidden>
   </div>
   <div id="flash"></div>
   <div id="hot"></div>
@@ -295,22 +328,22 @@ const DEFAULTS = {
   logoCorner: 'br', logoScale: 0.22, logoOpacity: 0.9,
   musicVolume: 0.9, origVolume: 0.15, fade: 0.6,
   leadOn: true, leadRequired: false,
+  borderId: null, logoId: null, musicId: null,
   pinHash: null,
 };
 let S = { ...DEFAULTS };
 let ASSETS = {};               // id -> {id, name, blob}
 async function loadSettings() { S = { ...DEFAULTS, ...(await DB.get('kv', 'settings') || {}) }; }
 const saveSettings = () => DB.put('kv', S, 'settings');
-async function loadAssets() { ASSETS = {}; (await DB.all('assets')).forEach(a => ASSETS[a.id] = a); }
+async function loadAssets() { ASSETS = {}; (await DB.all('assets')).forEach(a => { if (!a.kind && ['border', 'logo', 'music'].includes(a.id)) a.kind = a.id; if (a.kind) ASSETS[a.id] = a; }); }
 
 /* ---------------- navigation ---------------- */
 function show(name) {
-  $$('.screen').forEach(s => s.classList.toggle('active', s.id === 's-' + name));
+  $$('.screen').forEach(sc => sc.classList.toggle('active', sc.id === 's-' + name));
   $('#s-' + name).scrollTop = 0;
-  if (name === 'console') renderConsole();
-  if (name === 'library') renderLibrary();
 }
-document.addEventListener('click', e => { const g = e.target.closest('[data-go]'); if (g) show(g.dataset.go); });
+async function showHome() { show('home'); await renderHome(); }
+document.addEventListener('click', e => { const g = e.target.closest('[data-go]'); if (g && g.dataset.go === 'home') showHome(); });
 
 /* ---------------- PIN ---------------- */
 const sha = async s => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)))].map(b => b.toString(16).padStart(2, '0')).join('');
@@ -345,51 +378,12 @@ async function setNewPin() {
   S.pinHash = await sha(a); await saveSettings(); toast('PIN saved'); return true;
 }
 
-/* ---------------- console ---------------- */
-let EV = null;                 // active event
-async function loadActive() {
-  const id = await DB.get('kv', 'activeEvent');
-  EV = id ? (await DB.get('events', id)) || null : null;
-  if (EV && EV.endedAt) EV = null;
-}
-async function renderConsole() {
-  await loadActive();
-  const live = $('#c-live');
-  if (EV) {
-    live.innerHTML = `<div class="card live"><span class="pill">● Live</span><div><b style="font-size:20px">${esc(EV.name)}</b><div class="sub">${EV.clipCount} clips · started ${fmtDate(EV.createdAt)}</div></div>
-      <button class="btn primary" id="c-open">Open booth (guest mode)</button><button class="btn danger" id="c-end">End event</button></div>`;
-    $('#c-open').onclick = enterBooth;
-    $('#c-end').onclick = async () => { if (!confirm('End "' + EV.name + '"? You can resume it later from the library.')) return; EV.endedAt = Date.now(); await DB.put('events', EV); await DB.del('kv', 'activeEvent'); localStorage.removeItem('kiosk'); renderConsole(); };
-  } else {
-    live.innerHTML = `<div class="card"><span class="pill off">No live event</span><input type="text" id="c-name" placeholder="Event name (e.g. Smith Wedding)" maxlength="60">
-      <button class="btn primary" id="c-start">Start event</button></div>`;
-    $('#c-start').onclick = startEvent;
-  }
-  try {
-    const est = navigator.storage && navigator.storage.estimate ? await navigator.storage.estimate() : null;
-    const persisted = navigator.storage && navigator.storage.persisted ? await navigator.storage.persisted() : false;
-    $('#c-storage').textContent = est ? `Stored on this phone: ${fmtBytes(est.usage || 0)} of ${fmtBytes(est.quota || 0)} · ${persisted ? 'protected from auto-clean' : 'not yet protected from auto-clean'}` : '';
-  } catch {}
-  const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
-  $('#c-install').textContent = standalone ? 'Installed. For a locked kiosk, triple-click the side button to start Guided Access.'
-    : 'Tip: in Safari tap Share → Add to Home Screen so it runs full-screen and keeps your clips safe.';
-}
-async function startEvent() {
-  const name = ($('#c-name').value || '').trim() || 'Untitled Event';
-  EV = { id: uid(), name, createdAt: Date.now(), endedAt: null, clipCount: 0, settings: { ...S } };
-  delete EV.settings.pinHash;
-  await DB.put('events', EV); await DB.put('kv', EV.id, 'activeEvent');
-  try { if (navigator.storage && navigator.storage.persist) await navigator.storage.persist(); } catch {}
-  renderConsole(); toast('Event started');
-}
-$('#c-library').onclick = () => show('library');
-$('#c-settings').onclick = () => show('settings');
-
-/* ---------------- settings screen ---------------- */
-let D = {};
+/* ---------------- settings model ---------------- */
+const assetsFor = cfg => ({ border: ASSETS[cfg.borderId], logo: ASSETS[cfg.logoId], music: ASSETS[cfg.musicId] });
+const cleanSettings = o => { const c = { ...DEFAULTS, ...o }; delete c.pinHash; return c; };
 const SETTINGS_UI = [
   ['Capture'],
-  ['clipLength', 'range', 'Clip length', { min: 3, max: 60, step: 1, fmt: v => v + ' s' }],
+  ['clipLength', 'range', 'Video length', { min: 3, max: 60, step: 1, fmt: v => v + ' s' }],
   ['countdown', 'range', 'Countdown', { min: 0, max: 10, step: 1, fmt: v => v + ' s' }],
   ['facing', 'select', 'Camera', { opts: [['user', 'Front (selfie)'], ['environment', 'Back']] }],
   ['outputWidth', 'select', 'Video quality', { num: true, opts: [[720, 'HD 720 (fast, reliable)'], [1080, 'Full HD 1080 (slower)']], hint: 'Videos are finished on the phone in real time — HD 720 is safest for busy events.' }],
@@ -397,7 +391,7 @@ const SETTINGS_UI = [
   ['Motion trigger'],
   ['motionOn', 'check', 'Start automatically when the rig spins'],
   ['sensitivity', 'range', 'Sensitivity', { min: 0, max: 1, step: .01, fmt: v => v < .33 ? 'Firm spin' : v > .66 ? 'Light nudge' : 'Balanced', show: 'motionOn' }],
-  ['cooldown', 'range', 'Cooldown between clips', { min: 2, max: 20, step: 1, fmt: v => v + ' s', show: 'motionOn' }],
+  ['cooldown', 'range', 'Cooldown between videos', { min: 2, max: 20, step: 1, fmt: v => v + ' s', show: 'motionOn' }],
   ['Effect'],
   ['effect', 'select', 'Style', { opts: [['none', 'None — real time'], ['ramp', 'Speed ramp — slow-mo → speed-up'], ['boomerang', 'Boomerang — forward + snap back']] }],
   ['slowStart', 'range', 'Slow-mo starts at', { min: 0, max: .8, step: .01, fmt: v => Math.round(v * 100) + '%', show: 'effect=ramp' }],
@@ -406,12 +400,12 @@ const SETTINGS_UI = [
   ['outroSpeed', 'range', 'Outro speed', { min: 1, max: 3, step: .1, fmt: v => v.toFixed(1) + '×', show: 'effect=ramp' }],
   ['boomerangSec', 'range', 'Snap-back length', { min: .5, max: 3, step: .1, fmt: v => v.toFixed(1) + ' s', show: 'effect=boomerang' }],
   ['Look'],
-  ['@border', 'file', 'Border overlay (transparent PNG)', { accept: 'image/*' }],
-  ['@logo', 'file', 'Logo stamp (PNG)', { accept: 'image/*' }],
+  ['borderId', 'asset', 'Border overlay (transparent PNG)', { kind: 'border', accept: 'image/*' }],
+  ['logoId', 'asset', 'Logo stamp (PNG)', { kind: 'logo', accept: 'image/*' }],
   ['logoCorner', 'select', 'Logo position', { opts: [['tl', 'Top left'], ['tr', 'Top right'], ['bl', 'Bottom left'], ['br', 'Bottom right'], ['c', 'Centre']] }],
   ['logoScale', 'range', 'Logo size', { min: .05, max: .6, step: .01, fmt: v => Math.round(v * 100) + '% of width' }],
   ['logoOpacity', 'range', 'Logo opacity', { min: .2, max: 1, step: .05, fmt: v => Math.round(v * 100) + '%' }],
-  ['@music', 'file', 'Music bed', { accept: 'audio/*' }],
+  ['musicId', 'asset', 'Music bed', { kind: 'music', accept: 'audio/*' }],
   ['musicVolume', 'range', 'Music volume', { min: 0, max: 1, step: .05, fmt: v => Math.round(v * 100) + '%' }],
   ['origVolume', 'range', 'Original audio under music', { min: 0, max: 1, step: .05, fmt: v => Math.round(v * 100) + '%' }],
   ['fade', 'range', 'Music fade in / out', { min: 0, max: 3, step: .1, fmt: v => v.toFixed(1) + ' s' }],
@@ -419,8 +413,19 @@ const SETTINGS_UI = [
   ['leadOn', 'check', 'Ask for email / WhatsApp'],
   ['leadRequired', 'check', 'Make it required', { show: 'leadOn' }],
 ];
-function renderSettings() {
-  D = { ...S };
+
+let FORM = null;
+function openForm(o) {
+  FORM = { D: { ...o.initial }, o };
+  $('#f-title').textContent = o.title; $('#f-back').onclick = o.back;
+  $('#f-top').innerHTML = o.top || ''; $('#f-save').textContent = o.saveLabel;
+  $('#f-save').onclick = async () => { const D = FORM.D; if (D.slowEnd <= D.slowStart) D.slowEnd = Math.min(1, D.slowStart + .2); await o.onSave(D); };
+  $('#f-pin').classList.toggle('hidden', !o.showPin); if (o.showPin) renderPinCard();
+  renderFormBody(); if (o.onTopReady) o.onTopReady();
+  show('form');
+}
+function renderFormBody() {
+  const D = FORM.D, sc = $('#s-form'), y = sc.scrollTop;
   let html = '', open = false;
   for (const f of SETTINGS_UI) {
     if (f.length === 1) { if (open) html += '</div>'; html += `<h2>${f[0]}</h2><div class="card" style="padding:4px 16px">`; open = true; continue; }
@@ -429,42 +434,112 @@ function renderSettings() {
     if (type === 'range') html += `<div class="set"${show}><div class="lab"><span>${label}</span><output data-o="${k}"></output></div><input type="range" data-k="${k}" min="${o.min}" max="${o.max}" step="${o.step}"></div>`;
     else if (type === 'check') html += `<div class="set inline"${show}><span>${label}${o.hint ? `<div class="hint">${o.hint}</div>` : ''}</span><input type="checkbox" data-k="${k}"></div>`;
     else if (type === 'select') html += `<div class="set"${show}><div class="lab"><span>${label}</span></div><select data-k="${k}"${o.num ? ' data-num="1"' : ''}>${o.opts.map(([v, t]) => `<option value="${v}">${t}</option>`).join('')}</select>${o.hint ? `<div class="hint">${o.hint}</div>` : ''}</div>`;
-    else if (type === 'file') html += `<div class="set"><div class="lab"><span>${label}</span></div><div class="filebtn"><img data-prev="${k.slice(1)}" class="hidden" alt=""><label class="btn ghost" style="min-height:44px;width:auto;flex:1">Choose file…<input type="file" accept="${o.accept}" data-file="${k.slice(1)}" hidden></label><button class="btn danger ghost" data-clear="${k.slice(1)}" style="width:auto;min-height:44px">Remove</button></div><div class="hint" data-fname="${k.slice(1)}"></div></div>`;
+    else if (type === 'asset') {
+      const list = Object.values(ASSETS).filter(a => a.kind === o.kind).sort((a, b) => a.name.localeCompare(b.name));
+      html += `<div class="set"><div class="lab"><span>${label}</span></div><select data-k="${k}"><option value="">None</option>${list.map(a => `<option value="${a.id}">${esc(a.name)}</option>`).join('')}</select>
+        <div class="filebtn"><img data-prev="${k}" class="hidden" alt=""><label class="btn ghost" style="min-height:44px;flex:1">Upload new…<input type="file" accept="${o.accept}" data-upload="${k}" data-kind="${o.kind}" hidden></label></div></div>`;
+    }
   }
   if (open) html += '</div>';
-  html += `<h2>Operator PIN</h2><div class="card"><div class="sub">${S.pinHash ? 'A PIN is set. It locks the console and is the only way out of guest mode.' : 'No PIN set. Set one before handing the phone to guests.'}</div>
-    <button class="btn" id="set-pin">${S.pinHash ? 'Change PIN' : 'Set PIN'}</button>${S.pinHash ? '<button class="btn danger" id="set-nopin">Remove PIN</button>' : ''}</div>`;
-  $('#set-body').innerHTML = html;
-  $$('#set-body [data-k]').forEach(el => {
+  $('#f-body').innerHTML = html;
+  $$('#f-body [data-k]').forEach(el => {
     const k = el.dataset.k;
-    if (el.type === 'checkbox') el.checked = !!D[k]; else el.value = D[k];
+    if (el.type === 'checkbox') el.checked = !!D[k]; else el.value = D[k] == null ? '' : D[k];
     el.addEventListener('input', () => {
       D[k] = el.type === 'checkbox' ? el.checked : (el.type === 'range' || el.dataset.num) ? +el.value : el.value;
-      syncSettingsUI();
+      syncFormUI();
     });
   });
-  $$('#set-body [data-file]').forEach(el => el.addEventListener('change', async () => {
-    const f = el.files[0]; if (!f) return; const id = el.dataset.file;
-    const a = { id, name: f.name, blob: f }; await DB.put('assets', a); ASSETS[id] = a; syncSettingsUI(); toast('Added ' + f.name);
+  $$('#f-body [data-upload]').forEach(el => el.addEventListener('change', async () => {
+    const f = el.files[0]; if (!f) return;
+    const a = { id: uid(), kind: el.dataset.kind, name: f.name, blob: f }; await DB.put('assets', a); ASSETS[a.id] = a;
+    FORM.D[el.dataset.upload] = a.id; renderFormBody(); toast('Added ' + f.name);
   }));
-  $$('#set-body [data-clear]').forEach(el => el.onclick = async () => { const id = el.dataset.clear; await DB.del('assets', id); delete ASSETS[id]; syncSettingsUI(); });
-  const sp = $('#set-pin'); if (sp) sp.onclick = async () => { if (S.pinHash && !(await pinPrompt('Current PIN', '', verifyPin))) return; if (await setNewPin()) renderSettings(); };
-  const np = $('#set-nopin'); if (np) np.onclick = async () => { if (!(await pinPrompt('Current PIN', '', verifyPin))) return; S.pinHash = null; await saveSettings(); renderSettings(); };
-  syncSettingsUI();
+  syncFormUI(); sc.scrollTop = y;
 }
-function syncSettingsUI() {
-  SETTINGS_UI.forEach(f => { if (f.length > 1 && f[1] === 'range') { const o = $(`[data-o="${f[0]}"]`); if (o) o.textContent = f[3].fmt(+D[f[0]]); } });
-  $$('#set-body [data-show]').forEach(el => { const [k, v] = el.dataset.show.split('='); el.classList.toggle('hidden', v ? D[k] !== v : !D[k]); });
-  ['border', 'logo', 'music'].forEach(id => {
-    const a = ASSETS[id], img = $(`[data-prev="${id}"]`), nm = $(`[data-fname="${id}"]`);
-    nm.textContent = a ? a.name : 'None';
-    if (img) { if (a && id !== 'music') { img.src = URL.createObjectURL(a.blob); img.classList.remove('hidden'); } else img.classList.add('hidden'); }
+function syncFormUI() {
+  const D = FORM.D;
+  SETTINGS_UI.forEach(f => { if (f.length > 1 && f[1] === 'range') { const o = $(`#f-body [data-o="${f[0]}"]`); if (o) o.textContent = f[3].fmt(+D[f[0]]); } });
+  $$('#f-body [data-show]').forEach(el => { const [k, v] = el.dataset.show.split('='); el.classList.toggle('hidden', v ? D[k] !== v : !D[k]); });
+  $$('#f-body [data-prev]').forEach(img => { const a = ASSETS[D[img.dataset.prev]]; if (a && a.kind !== 'music') { img.src = URL.createObjectURL(a.blob); img.classList.remove('hidden'); } else img.classList.add('hidden'); });
+}
+function renderPinCard() {
+  $('#f-pin').innerHTML = `<h2>Operator PIN</h2><div class="card"><div class="sub">${S.pinHash ? 'A PIN is set. It locks the app and is the only way out of guest mode.' : 'No PIN set. Set one before handing the phone to guests.'}</div>
+    <button class="btn" id="set-pin">${S.pinHash ? 'Change PIN' : 'Set PIN'}</button>${S.pinHash ? '<button class="btn danger" id="set-nopin">Remove PIN</button>' : ''}</div>`;
+  $('#set-pin').onclick = async () => { if (S.pinHash && !(await pinPrompt('Current PIN', '', verifyPin))) return; if (await setNewPin()) renderPinCard(); };
+  const np = $('#set-nopin'); if (np) np.onclick = async () => { if (!(await pinPrompt('Current PIN', '', verifyPin))) return; S.pinHash = null; await saveSettings(); renderPinCard(); };
+}
+
+/* ---------------- home ---------------- */
+const allEvents = async () => (await DB.all('events')).sort((a, b) => b.createdAt - a.createdAt);
+async function renderHome() {
+  const evs = await allEvents();
+  $('#h-count').textContent = evs.length ? '(' + evs.length + ')' : '';
+  const box = $('#h-list'); box.innerHTML = evs.length ? '' : '<div class="sub" style="padding:4px 2px 0">No events yet — start your first one above.</div>';
+  evs.forEach(e => {
+    const d = document.createElement('div'); d.className = 'list-item';
+    d.innerHTML = `<div class="grow"><b>${esc(e.name)}</b><span class="sub">${e.clipCount} videos · ${fmtDate(e.createdAt)}</span></div><span style="color:var(--mut)">›</span>`;
+    d.onclick = () => openHub(e.id); box.appendChild(d);
+  });
+  try {
+    const est = navigator.storage && navigator.storage.estimate ? await navigator.storage.estimate() : null;
+    const persisted = navigator.storage && navigator.storage.persisted ? await navigator.storage.persisted() : false;
+    $('#h-storage').textContent = est ? `Stored on this phone: ${fmtBytes(est.usage || 0)} · ${persisted ? 'protected from auto-clean' : 'not yet protected from auto-clean'}` : '';
+  } catch {}
+  const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  $('#h-install').textContent = standalone ? 'For a locked kiosk, triple-click the side button to start Guided Access.' : 'Tip: in Safari tap Share → Add to Home Screen so it runs full-screen and keeps your videos safe.';
+}
+$('#h-new').onclick = () => openNewEvent(null);
+$('#h-defaults').onclick = () => openForm({
+  title: 'Default settings', back: showHome, saveLabel: 'Save defaults', showPin: true, initial: cleanSettings(S),
+  top: '<div class="sub">New events start with these settings. You can change everything again for each event.</div>',
+  onSave: async D => { S = { ...D, pinHash: S.pinHash }; await saveSettings(); toast('Saved'); showHome(); },
+});
+
+async function openNewEvent(copyId) {
+  const evs = await allEvents();
+  const settingsOf = id => { const e = id && evs.find(x => x.id === id); return e ? cleanSettings(e.settings) : cleanSettings(S); };
+  const opts = '<option value="">Default settings</option>' + evs.map(e => `<option value="${e.id}">${esc(e.name)}</option>`).join('');
+  openForm({
+    title: 'New event', back: showHome, saveLabel: 'Create event', initial: settingsOf(copyId),
+    top: `<div class="card field"><div><label for="f-name">Event name</label><input type="text" id="f-name" placeholder="e.g. Smith Wedding" maxlength="60"></div>
+      <div><label for="f-copy">Copy settings from</label><select id="f-copy">${opts}</select><div class="sub" style="margin-top:6px">Pick a past event to reuse its look, effect and timing, then change anything below.</div></div>
+      <label class="chk"><input type="checkbox" id="f-remember"> Also save these as my default settings</label></div>`,
+    onTopReady: () => { $('#f-copy').value = copyId || ''; $('#f-copy').onchange = () => { FORM.D = settingsOf($('#f-copy').value || null); renderFormBody(); }; },
+    onSave: async D => {
+      const ev = { id: uid(), name: ($('#f-name').value || '').trim() || 'Untitled Event', createdAt: Date.now(), clipCount: 0, settings: cleanSettings(D) };
+      await DB.put('events', ev);
+      if ($('#f-remember').checked) { S = { ...D, pinHash: S.pinHash }; await saveSettings(); }
+      try { if (navigator.storage && navigator.storage.persist) await navigator.storage.persist(); } catch {}
+      await openHub(ev.id); toast('Event created');
+    },
   });
 }
-$('#c-settings').addEventListener('click', renderSettings);
-$('#set-save').onclick = async () => {
-  if (D.slowEnd <= D.slowStart) D.slowEnd = Math.min(1, D.slowStart + .2);
-  S = { ...D, pinHash: S.pinHash }; await saveSettings(); toast('Saved'); show('console');
+
+/* ---------------- event hub ---------------- */
+let EV = null;                 // the event being recorded in the booth
+let CUR = null;                // the event open in the hub / videos screens
+async function openHub(id) {
+  CUR = await DB.get('events', id); if (!CUR) return showHome();
+  CUR.settings = cleanSettings(CUR.settings);
+  const clips = await DB.byEvent(id);
+  $('#hub-title').textContent = CUR.name; $('#hub-sub').textContent = 'Created ' + fmtDate(CUR.createdAt);
+  $('#hub-count').textContent = '(' + clips.length + ')';
+  show('hub');
+}
+$('#hub-record').onclick = () => enterBooth(CUR.id);
+$('#hub-videos').onclick = () => openVideos();
+$('#hub-settings').onclick = () => openForm({
+  title: 'Event settings', back: () => openHub(CUR.id), saveLabel: 'Save event settings', initial: cleanSettings(CUR.settings),
+  top: `<div class="sub">${esc(CUR.name)} — these only change this event.</div>`,
+  onSave: async D => { CUR.settings = cleanSettings(D); await DB.put('events', CUR); toast('Saved'); openHub(CUR.id); },
+});
+$('#hub-copy').onclick = () => openNewEvent(CUR.id);
+$('#hub-rename').onclick = async () => { const n = prompt('Event name', CUR.name); if (n && n.trim()) { CUR.name = n.trim().slice(0, 60); await DB.put('events', CUR); openHub(CUR.id); } };
+$('#hub-delete').onclick = async () => {
+  if (!confirm('Delete "' + CUR.name + '" and all its videos from this phone? This cannot be undone.')) return;
+  for (const c of await DB.byEvent(CUR.id)) await DB.del('clips', c.id);
+  await DB.del('events', CUR.id); await DB.del('kv', 'reel:' + CUR.id); showHome();
 };
 
 /* ---------------- audio context (unlocked by a tap) ---------------- */
@@ -614,7 +689,7 @@ async function renderClip(blob, recDur, cfg, assets, onProg = () => {}) {
   nodes.forEach(n => { try { n.stop(); } catch {} }); v.pause(); URL.revokeObjectURL(v.src);
   tailFrames.forEach(f => f.b.close && f.b.close());
   onProg(1);
-  return { blob: new Blob(chunks, { type: (MIME || 'video/webm').split(';')[0] }), duration: total };
+  return { blob: new Blob(chunks, { type: (rec.mimeType || MIME || 'video/mp4').split(';')[0] }), duration: total };
 }
 
 /* Stitches finished clips (already branded) into one reel under the music bed. */
@@ -650,7 +725,7 @@ async function renderReel(blobs, assets, cfg, onProg = () => {}) {
   }
   await sleep(150); rec.stop(); await finished; nodes.forEach(n => { try { n.stop(); } catch {} });
   onProg(1);
-  return { blob: new Blob(chunks, { type: (MIME || 'video/webm').split(';')[0] }), duration: total };
+  return { blob: new Blob(chunks, { type: (rec.mimeType || MIME || 'video/mp4').split(';')[0] }), duration: total };
 }
 
 async function makeThumb(blob) {
@@ -695,31 +770,50 @@ const bphase = p => {
   $('#b-rec').classList.toggle('hidden', p !== 'recording'); $('#b-proc').classList.toggle('hidden', p !== 'processing');
   $('#b-resume').classList.toggle('hidden', p !== 'resume');
 };
-async function enterBooth() {
-  await loadActive(); if (!EV) { toast('Start an event first'); return; }
-  localStorage.setItem('kiosk', '1');
-  show('booth'); bphase('resume');
-  if (!$('#b-go')._bound) { $('#b-go')._bound = true; $('#b-go').onclick = startBooth; }
+function bstatus(msg) { const el = $('#b-status'); el.textContent = msg || ''; el.classList.toggle('hidden', !msg); }
+async function enterBooth(id) {
+  const ev = await DB.get('events', id); if (!ev) { toast('Event not found'); return showHome(); }
+  EV = ev; EV.settings = cleanSettings(EV.settings);
+  localStorage.setItem('kiosk', id);
+  $('#b-evname').textContent = EV.name; bstatus(''); show('booth'); bphase('resume');
+}
+$('#b-go').onclick = () => startBooth();
+function camError(e) {
+  const n = (e && e.name) || '';
+  if (n === 'NotAllowedError' || n === 'SecurityError') return 'Camera or microphone is blocked. On iPhone: Settings → Safari → Camera and Microphone → Allow, then close and reopen the app. (If you opened this link inside WhatsApp or Messages, open it in Safari instead.)';
+  if (n === 'NotFoundError' || n === 'OverconstrainedError') return 'No usable camera was found on this phone.';
+  if (n === 'NotReadableError' || n === 'AbortError') return 'The camera is busy. Close other apps using it (FaceTime, Camera, Zoom) and tap START BOOTH again.';
+  return 'The camera could not start (' + (n || 'unknown error') + '). Try reopening the app, or use the button below to record with the normal camera.';
+}
+async function getCam(cfg) {
+  const tries = [
+    { video: { facingMode: cfg.facing, width: { ideal: 1080 }, height: { ideal: 1920 }, frameRate: { ideal: 60 } }, audio: true },
+    { video: { facingMode: cfg.facing }, audio: true },
+    { video: true, audio: true },
+    { video: true, audio: false },
+  ];
+  let err;
+  for (const c of tries) { try { return await navigator.mediaDevices.getUserMedia(c); } catch (e) { err = e; if (e && e.name === 'NotAllowedError') break; } }
+  throw err;
 }
 async function startBooth() {
   const cfg = EV.settings;
-  const motionAsk = cfg.motionOn ? Motion.permission() : Promise.resolve(false);   // must start inside the tap
-  const resumed = audioCtx().resume();
-  const motionOk = await motionAsk; try { await resumed; } catch {}
-  try {
-    B.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: cfg.facing, width: { ideal: 1080 }, height: { ideal: 1920 }, frameRate: { ideal: 60, min: 24 } }, audio: { echoCancellation: false, noiseSuppression: false } });
-  } catch (e) {
-    try { B.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: cfg.facing }, audio: true }); }
-    catch (e2) { toast('Camera blocked — allow camera & microphone in Safari settings'); return; }
-  }
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { bstatus('This browser cannot open the camera. Open the link in Safari (not inside WhatsApp) and add it to your Home Screen.'); return; }
+  if (!window.MediaRecorder) { bstatus('This iPhone is too old to record inside the app (needs iOS 14.5 or newer). Use the button below to record with the normal camera.'); return; }
+  bstatus('Starting camera…');
+  try { audioCtx().resume(); } catch {}                                       // unlock sound inside the tap, never wait for it
+  const motionAsk = cfg.motionOn ? Motion.permission() : Promise.resolve(false); // also asked inside the tap
+  try { B.stream = await getCam(cfg); } catch (e) { bstatus(camError(e)); return; }
   const cam = $('#cam'); cam.srcObject = B.stream; cam.classList.toggle('mirror', cfg.facing === 'user'); try { await cam.play(); } catch {}
-  const bi = $('#boothBorder'); if (ASSETS.border) { bi.src = URL.createObjectURL(ASSETS.border.blob); bi.classList.remove('hidden'); } else bi.classList.add('hidden');
-  $('#b-hero').innerHTML = cfg.motionOn && motionOk ? 'SPIN THE RIG<small>or tap to start</small>' : 'READY<small>tap to start</small>';
-  $('#b-meter').classList.toggle('hidden', !(cfg.motionOn && motionOk));
-  if (cfg.motionOn && motionOk) { Motion.onTrigger = () => { if (B.phase === 'waiting') beginCountdown('motion'); }; Motion.arm(cfg); }
-  else if (cfg.motionOn) toast('Motion sensors blocked — tap to start still works');
+  const bi = $('#boothBorder'), bd = assetsFor(cfg).border; if (bd) { bi.src = URL.createObjectURL(bd.blob); bi.classList.remove('hidden'); } else bi.classList.add('hidden');
+  $('#b-hero').innerHTML = 'READY<small>tap to start</small>'; $('#b-meter').classList.add('hidden');
+  motionAsk.then(ok => {
+    if (!cfg.motionOn) return;
+    if (ok && B.stream) { Motion.onTrigger = () => { if (B.phase === 'waiting') beginCountdown('motion'); }; Motion.arm(cfg); $('#b-hero').innerHTML = 'SPIN THE RIG<small>or tap to start</small>'; $('#b-meter').classList.remove('hidden'); }
+    else toast('Motion sensors are off — tap to start still works', 4000);
+  }).catch(() => {});
   try { B.wake = await navigator.wakeLock.request('screen'); } catch {}
-  bphase('waiting'); meterLoop();
+  bstatus(''); bphase('waiting'); meterLoop();
 }
 function meterLoop() {
   cancelAnimationFrame(B.raf);
@@ -732,6 +826,13 @@ function stopBooth() {
   if (B.stream) B.stream.getTracks().forEach(t => t.stop()); B.stream = null; $('#cam').srcObject = null;
   try { B.wake && B.wake.release(); } catch {} B.wake = null; bphase('idle');
 }
+/* backup: record with the phone's normal camera app, then run it through the same effects */
+$('#b-file').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f || !EV) return;
+  B.trigger = 'tap'; bphase('processing'); setProg(0);
+  let dur = 10; try { const o = await openVideo(f, 10); dur = o.dur; } catch {}
+  handleRecording(f, dur);
+};
 $('#b-tap').onclick = () => beginCountdown('tap');
 $('#b-wait').addEventListener('click', e => { if (e.target.id === 'b-wait') beginCountdown('tap'); });
 
@@ -750,10 +851,12 @@ function beginCountdown(trigger) {
 function startRecording() {
   const cfg = EV.settings; bphase('recording');
   const f = $('#flash'); f.style.transition = 'none'; f.style.opacity = .75; void f.offsetWidth; f.style.transition = ''; f.style.opacity = 0;
-  const chunks = []; const rec = new MediaRecorder(B.stream, { mimeType: MIME || undefined, videoBitsPerSecond: 8e6 });
+  const chunks = []; let rec;
+  try { rec = new MediaRecorder(B.stream, { mimeType: MIME || undefined, videoBitsPerSecond: 8e6 }); }
+  catch (e1) { try { rec = new MediaRecorder(B.stream); } catch (e2) { stopBooth(); bphase('resume'); bstatus('Recording inside the app is not supported on this phone. Use the button below to record with the normal camera.'); return; } }
   const t0 = performance.now(); B.rec = rec;
   rec.ondataavailable = e => e.data && e.data.size && chunks.push(e.data);
-  rec.onstop = () => { const dur = (performance.now() - t0) / 1000; handleRecording(new Blob(chunks, { type: (MIME || 'video/webm').split(';')[0] }), dur); };
+  rec.onstop = () => { const dur = (performance.now() - t0) / 1000; handleRecording(new Blob(chunks, { type: (rec.mimeType || MIME || 'video/mp4').split(';')[0] }), dur); };
   rec.start(1000);
   const bar = $('#b-recbar'), len = cfg.clipLength * 1000;
   const loop = () => { if (B.phase !== 'recording') return; const p = (performance.now() - t0) / len; bar.style.width = clamp(p, 0, 1) * 100 + '%'; if (p >= 1) { try { rec.stop(); } catch {} return; } requestAnimationFrame(loop); };
@@ -765,9 +868,9 @@ async function handleRecording(blob, dur) {
   bphase('processing'); setProg(0);
   const cfg = EV.settings, clip = { id: uid(), eventId: EV.id, createdAt: Date.now(), trigger: B.trigger, duration: dur, lead: null, deliveries: [] };
   let processed = blob, failed = false;
-  const needs = cfg.effect !== 'none' || ASSETS.border || ASSETS.logo || ASSETS.music || cfg.facing === 'user';
+  const assets = assetsFor(cfg); const needs = cfg.effect !== 'none' || assets.border || assets.logo || assets.music || cfg.facing === 'user';
   if (needs) {
-    try { const r = await renderClip(blob, dur, cfg, ASSETS, setProg); if (r.blob.size > 1000) { processed = r.blob; clip.duration = r.duration; } else failed = true; }
+    try { const r = await renderClip(blob, dur, cfg, assets, setProg); if (r.blob.size > 1000) { processed = r.blob; clip.duration = r.duration; } else failed = true; }
     catch (e) { console.warn('processing failed, keeping raw take', e); failed = true; }
   }
   clip.processed = processed; clip.type = processed.type || blob.type;
@@ -789,7 +892,7 @@ async function exitRequest() {
   if (navigator.vibrate) navigator.vibrate(60);
   if (S.pinHash) { if (!(await pinPrompt('Operator PIN', 'Enter your PIN to leave the booth.', verifyPin))) return; }
   else if (!confirm('Leave the booth?')) return;
-  stopBooth(); localStorage.removeItem('kiosk'); show('console');
+  stopBooth(); localStorage.removeItem('kiosk'); openHub(EV.id);
 }
 
 /* ---------------- review ---------------- */
@@ -816,33 +919,24 @@ $('#r-savelead').onclick = async () => {
 };
 $('#r-done').onclick = () => {
   if (EV.settings.leadOn && EV.settings.leadRequired && !CLIP._leadSaved) { $('#r-err').textContent = 'Please add your details first.'; return; }
-  $('#r-video').pause(); show('booth'); resumeWaiting();
+  $('#r-video').pause(); show('booth'); afterReview();
 };
-$('#r-retake').onclick = async () => { if (!confirm('Delete this video and retake?')) return; await DB.del('clips', CLIP.id); EV.clipCount = Math.max(0, EV.clipCount - 1); await DB.put('events', EV); $('#r-video').pause(); show('booth'); resumeWaiting(); };
+$('#r-retake').onclick = async () => { if (!confirm('Delete this video and retake?')) return; await DB.del('clips', CLIP.id); EV.clipCount = Math.max(0, EV.clipCount - 1); await DB.put('events', EV); $('#r-video').pause(); show('booth'); afterReview(); };
+function afterReview() { if (B.stream) resumeWaiting(); else { bstatus(''); bphase('resume'); } }
 function resumeWaiting() { bphase('waiting'); Motion.hold(EV.settings.cooldown * 1000); setProg(0); }
 
-/* ---------------- library ---------------- */
-async function renderLibrary() {
-  const evs = (await DB.all('events')).sort((a, b) => b.createdAt - a.createdAt); const box = $('#lib-list');
-  box.innerHTML = evs.length ? '' : '<div class="card sub">No events yet. Start one from the console.</div>';
-  evs.forEach(e => {
-    const d = document.createElement('div'); d.className = 'list-item';
-    d.innerHTML = `<div class="grow"><b>${esc(e.name)}</b><span class="sub">${e.clipCount} clips · ${fmtDate(e.createdAt)}</span></div>${e.endedAt ? '' : '<span class="pill">Live</span>'}<span style="color:var(--mut)">›</span>`;
-    d.onclick = () => openEvent(e.id); box.appendChild(d);
-  });
-}
-let CUR = null, CUR_CLIPS = [];
-async function openEvent(id) {
-  CUR = await DB.get('events', id); CUR_CLIPS = (await DB.byEvent(id)).sort((a, b) => a.createdAt - b.createdAt);
-  $('#ev-title').textContent = CUR.name; $('#ev-sub').textContent = `${CUR_CLIPS.length} clips · ${fmtDate(CUR.createdAt)}`;
+/* ---------------- videos (per event) ---------------- */
+let CUR_CLIPS = [];
+$('#v-back').onclick = () => openHub(CUR.id);
+async function openVideos() {
+  const id = CUR.id; CUR_CLIPS = (await DB.byEvent(id)).sort((a, b) => a.createdAt - b.createdAt);
+  $('#ev-title').textContent = CUR.name; $('#ev-sub').textContent = `${CUR_CLIPS.length} videos · ${fmtDate(CUR.createdAt)}`;
   const n = CUR_CLIPS.length, batches = []; for (let i = 0; i < n; i += 5) batches.push(CUR_CLIPS.slice(i, i + 5));
   const a = $('#ev-actions'); a.innerHTML = `<h2 style="margin:0">Save &amp; export</h2>
-    ${batches.map((b, i) => `<button class="btn primary" data-batch="${i}">Save to Photos — clips ${i * 5 + 1}–${i * 5 + b.length}</button>`).join('') || '<div class="sub">No clips yet.</div>'}
+    ${batches.map((b, i) => `<button class="btn primary" data-batch="${i}">Save to Photos — videos ${i * 5 + 1}–${i * 5 + b.length}</button>`).join('') || '<div class="sub">No videos yet. Go back and tap Start recording.</div>'}
     ${n ? '<div class="sub">Pick “Save Video” in the share sheet. iPhone shares a few videos at a time, so there is one button per batch.</div>' : ''}
     <button class="btn" id="ev-zip" ${n ? '' : 'disabled'}>Export all videos (.zip)</button>
-    <button class="btn" id="ev-csv" ${CUR_CLIPS.some(c => c.lead) ? '' : 'disabled'}>Export leads (.csv)</button>
-    ${CUR.endedAt ? '<button class="btn" id="ev-resume">Resume this event</button>' : ''}
-    <button class="btn danger" id="ev-delete">Delete event</button>`;
+    <button class="btn" id="ev-csv" ${CUR_CLIPS.some(c => c.lead) ? '' : 'disabled'}>Export leads (.csv)</button>`;
   $$('[data-batch]', a).forEach(b => b.onclick = async () => { const files = batches[+b.dataset.batch].map(c => clipFile(c, CUR)); if (await shareFiles(files, CUR.name)) { for (const c of batches[+b.dataset.batch]) { c.deliveries.push({ kind: 'photos', at: Date.now() }); await DB.put('clips', c); } toast('Done'); } else toast('Sharing isn’t available here — use the .zip'); });
   $('#ev-zip').onclick = async () => {
     toast('Packaging…', 8000); const reel = await DB.get('kv', 'reel:' + CUR.id); const base = baseName(CUR);
@@ -857,9 +951,7 @@ async function openEvent(id) {
     const f = new File([['email,whatsapp,consent_marketing,captured_at,clip_id', ...rows].join('\n')], baseName(CUR) + '_leads.csv', { type: 'text/csv' });
     shareFiles([f], 'Leads').then(ok => ok || download(f, f.name));
   };
-  const rs = $('#ev-resume'); if (rs) rs.onclick = async () => { const act = await DB.get('kv', 'activeEvent'); if (act && act !== CUR.id) { const o = await DB.get('events', act); if (o) { o.endedAt = Date.now(); await DB.put('events', o); } } CUR.endedAt = null; await DB.put('events', CUR); await DB.put('kv', CUR.id, 'activeEvent'); toast('Event resumed'); show('console'); };
-  $('#ev-delete').onclick = async () => { if (!confirm('Delete "' + CUR.name + '" and all its clips from this phone? This cannot be undone.')) return; for (const c of CUR_CLIPS) await DB.del('clips', c.id); await DB.del('events', CUR.id); await DB.del('kv', 'reel:' + CUR.id); if (await DB.get('kv', 'activeEvent') === CUR.id) await DB.del('kv', 'activeEvent'); show('library'); };
-  renderReelBox(); renderGrid(); show('event');
+  renderReelBox(); renderGrid(); show('videos');
 }
 async function renderReelBox() {
   const box = $('#ev-reel'), reel = await DB.get('kv', 'reel:' + CUR.id), can = CUR_CLIPS.length > 0;
@@ -869,7 +961,7 @@ async function renderReelBox() {
   $('#rl-build').onclick = async () => {
     const btn = $('#rl-build'); btn.disabled = true; try { await audioCtx().resume(); } catch {}
     try {
-      const r = await renderReel(CUR_CLIPS.map(c => c.processed), ASSETS, { ...DEFAULTS, ...CUR.settings }, p => $('#rl-msg').textContent = 'Building… ' + Math.round(p * 100) + '% — keep this screen open');
+      const r = await renderReel(CUR_CLIPS.map(c => c.processed), assetsFor(CUR.settings), { ...DEFAULTS, ...CUR.settings }, p => $('#rl-msg').textContent = 'Building… ' + Math.round(p * 100) + '% — keep this screen open');
       await DB.put('kv', r.blob, 'reel:' + CUR.id); toast('Highlight reel ready'); renderReelBox();
     } catch (e) { $('#rl-msg').textContent = 'Could not build the reel: ' + e.message; btn.disabled = false; }
   };
@@ -887,16 +979,18 @@ let MODAL = null;
 function openModal(c) { MODAL = c; const v = $('#m-video'); v.src = URL.createObjectURL(c.processed); $('#modal').classList.add('show'); v.play().catch(() => {}); $('#m-del').classList.toggle('hidden', !!c.reel); }
 $('#m-close').onclick = () => { $('#m-video').pause(); $('#modal').classList.remove('show'); };
 $('#m-share').onclick = async () => { const f = new File([MODAL.processed], 'party-machine.' + extOf(MODAL.type), { type: MODAL.type }); if (!(await shareFiles([f], 'Party Machines video'))) download(f, f.name); };
-$('#m-del').onclick = async () => { if (!confirm('Delete this clip?')) return; await DB.del('clips', MODAL.id); CUR.clipCount = Math.max(0, CUR.clipCount - 1); await DB.put('events', CUR); $('#m-close').onclick(); openEvent(CUR.id); };
+$('#m-del').onclick = async () => { if (!confirm('Delete this clip?')) return; await DB.del('clips', MODAL.id); CUR.clipCount = Math.max(0, CUR.clipCount - 1); await DB.put('events', CUR); $('#m-close').onclick(); openVideos(); };
 
 /* ---------------- boot ---------------- */
 (async function init() {
-  await DB.open(); await loadSettings(); await loadAssets(); await loadActive();
+  await DB.open(); await loadSettings(); await loadAssets();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
   document.addEventListener('visibilitychange', async () => { if (document.visibilityState === 'visible' && B.phase === 'waiting') { try { B.wake = await navigator.wakeLock.request('screen'); } catch {} } });
-  if (localStorage.getItem('kiosk') === '1' && EV) { enterBooth(); return; }       // a restart mid-event returns to the locked booth
-  if (S.pinHash) { await pinPrompt('Operator PIN', 'Enter your PIN to open the console.', verifyPin, true); }
-  renderConsole();
+  const k = localStorage.getItem('kiosk');
+  if (k && k !== '1' && await DB.get('events', k)) { enterBooth(k); return; }      // a restart mid-event returns to the locked booth
+  localStorage.removeItem('kiosk');
+  if (S.pinHash) { await pinPrompt('Operator PIN', 'Enter your PIN to open the app.', verifyPin, true); }
+  showHome();
 })();
 window.PM = { renderClip, renderReel, makeZip, makeThumb, openVideo, DEFAULTS, MIME, audioCtx };
 </script>

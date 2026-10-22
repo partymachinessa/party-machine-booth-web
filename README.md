@@ -2,6 +2,8 @@
 
 A 360-booth kiosk that runs in Safari and installs to the iPhone Home Screen. No App Store, no Xcode.
 
+**How it flows:** Welcome → *Start new event* (copy settings from any past event, tweak them, create) → each event has **Start recording** and **Videos** (save to Photos, .zip, leads, highlight reel). Past events sit in a dropdown at the bottom of the home screen.
+
 **What works:** motion trigger + tap start, countdown ring, recording, speed-ramp / boomerang / no effect,
 border + logo overlay, music bed with fade, lead capture (email / WhatsApp), per-event library,
 highlight reel, Save-to-Photos batches via the share sheet, `.zip` and `leads.csv` export,
