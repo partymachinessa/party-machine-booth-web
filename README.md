@@ -10,6 +10,12 @@ A 360-booth kiosk that runs in Safari and installs to the iPhone Home Screen. No
 
 **Processing safety:** every step has a time limit, a *Skip effects* button appears if it drags, and a video always ends up on the review screen (with a note if effects were skipped). Review has a **Share** button in the top-right corner (AirDrop, WhatsApp, Messages, Save Video to Photos). A web app cannot save to Photos silently — that needs the share sheet or the native app.
 
+**Speed editor (v4):** in settings, *Speed, slow-mo & fast-forward* lets you add any number of sections — each with a start, an end and a speed from 0.25× to 4× — shown on a timeline with the finished length. Quick-style presets (Classic 360, Slow-mo moment, Party fast, Boomerang, Real time) fill it in for you.
+
+**Overlay photo:** a transparent PNG is laid over the video at exactly the video's size (3:4 = 1080×1440, or 9:16 = 1080×1920). Settings checks the image (shape and see-through area) and previews it.
+
+**Also in v4:** caption text on the video, mirror-front-camera switch, auto-return from the review screen, and an **End-of-event summary** (videos, total time, leads, shares, busiest hours, share/export).
+
 **What works:** motion trigger + tap start, countdown ring, recording, speed-ramp / boomerang / no effect,
 border + logo overlay, music bed with fade, lead capture (email / WhatsApp), per-event library,
 highlight reel, Save-to-Photos batches via the share sheet, `.zip` and `leads.csv` export,

@@ -158,6 +158,43 @@ details.past .list-item{margin-top:8px;background:var(--panel2)}
 .field label{display:block;font-size:13px;color:var(--mut);margin:2px 0 6px}
 #b-status{background:rgba(255,77,94,.16);border:1px solid rgba(255,77,94,.5);color:#ffd5d9;border-radius:14px;padding:12px 14px;font-size:14px;line-height:1.4;text-align:left;width:100%}
 .tapbtn.alt{display:flex;align-items:center;justify-content:center;background:transparent;color:#fff;border:2px solid rgba(255,255,255,.5);font-size:16px;letter-spacing:.02em;min-height:56px;text-align:center;padding:0 14px}
+
+.sec{background:var(--panel);border:1px solid var(--line);border-radius:20px;margin:12px 0;overflow:hidden}
+.sec>summary{list-style:none;cursor:pointer;padding:16px;font-weight:800;font-size:16px;display:flex;justify-content:space-between;align-items:center}
+.sec>summary::-webkit-details-marker{display:none}
+.sec>summary::after{content:'▾';color:var(--accent);font-size:18px}
+.sec[open]>summary::after{content:'▴'}
+.secbody{padding:0 16px 10px}
+.secdesc{font-size:13px;color:var(--mut);margin:-2px 0 6px}
+.presets{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:4px 0 10px}
+.preset{background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:12px;text-align:left;cursor:pointer}
+.preset b{display:block;font-size:14px}.preset span{font-size:12px;color:var(--mut)}
+.preset.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.chip{background:var(--panel2);border:1px solid var(--line);border-radius:99px;padding:6px 12px;font-size:13px;cursor:pointer}
+.chip.on{background:var(--accent);color:var(--ink);border-color:transparent;font-weight:700}
+.tl{position:relative;height:42px;background:var(--panel2);border-radius:12px;overflow:hidden}
+.tl i{position:absolute;top:0;bottom:0;display:flex;align-items:center;justify-content:center;font:700 11px ui-monospace,Menlo,monospace;font-style:normal;color:#fff;overflow:hidden;white-space:nowrap}
+.tl i.slow{background:rgba(47,123,255,.9)}.tl i.fast{background:var(--accent);color:var(--ink)}
+.tlticks{display:flex;justify-content:space-between;font-size:11px;color:var(--mut);margin-top:4px}
+.seg{background:var(--panel2);border-radius:16px;padding:12px;margin-top:10px;display:flex;flex-direction:column;gap:6px}
+.seghead{display:flex;justify-content:space-between;align-items:center}
+.seg label{display:flex;justify-content:space-between;font-size:13px;color:var(--mut)}
+.seg label output{color:var(--accent);font-weight:700}
+.segdel{padding:5px 12px!important;font-size:13px!important}
+.ovprev{position:relative;width:44%;max-width:170px;border-radius:12px;overflow:hidden;background:repeating-conic-gradient(#2a3d70 0 25%,#1c2c58 0 50%) 0 0/16px 16px;flex:none}
+.ovprev .scene{position:absolute;inset:0;background:radial-gradient(circle at 50% 45%,rgba(255,210,31,.85) 0 18%,transparent 19%),linear-gradient(160deg,#2f7bff,#0b2a7a)}
+.ovprev img{position:absolute;inset:0;width:100%;height:100%}
+.ovrow{display:flex;gap:12px;align-items:flex-start;margin-top:8px}
+.ok{color:var(--ok)}.warn{color:var(--accent)}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:14px}
+.tile b{display:block;font-size:28px;color:var(--accent);line-height:1.1}.tile span{font-size:12px;color:var(--mut)}
+.hbars{display:flex;align-items:flex-end;gap:6px;height:120px;margin-top:6px}
+.hbars div{flex:1;max-width:46px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px;font-size:10px;color:var(--mut);height:100%}
+.hbars i{display:block;width:100%;background:var(--blue);border-radius:6px 6px 0 0;min-height:3px}
+.hbars div.top i{background:var(--accent)}
+#b-caption{position:absolute;left:0;right:0;text-align:center;font-weight:800;pointer-events:none;z-index:2;padding:0 4%;text-shadow:0 2px 10px rgba(0,0,0,.7);line-height:1.1}
 @media (prefers-reduced-motion:reduce){.rings i,.recpill i{animation:none}}
 </style>
 </head>
@@ -196,12 +233,28 @@ details.past .list-item{margin-top:8px;background:var(--panel2)}
   <div class="sub" id="hub-sub"></div>
   <button class="btn primary big" id="hub-record">● Start recording</button>
   <button class="btn big" id="hub-videos">Videos <span id="hub-count" class="sub"></span></button>
+  <button class="btn big" id="hub-summary">End-of-event summary</button>
   <div class="card">
     <h2 style="margin:0">This event</h2>
     <button class="btn" id="hub-settings">Event settings</button>
     <button class="btn" id="hub-copy">Copy settings to a new event</button>
     <button class="btn" id="hub-rename">Rename</button>
     <button class="btn danger" id="hub-delete">Delete event</button>
+  </div>
+</div></section>
+
+<!-- ===== SUMMARY ===== -->
+<section id="s-summary" class="screen"><div class="wrap">
+  <button class="back" id="sm-back">‹ Event</button>
+  <h1 id="sm-title">Summary</h1><div class="sub" id="sm-sub"></div>
+  <div class="tiles" id="sm-tiles"></div>
+  <div class="card"><h2 style="margin:0">Busiest times</h2><div class="hbars" id="sm-chart"></div><div class="sub" id="sm-busy"></div></div>
+  <div class="card" id="sm-details"></div>
+  <div class="card"><h2 style="margin:0">Hand over</h2>
+    <button class="btn primary big" id="sm-share">Share summary</button>
+    <button class="btn" id="sm-zip">Export all videos (.zip)</button>
+    <button class="btn" id="sm-csv">Export leads (.csv)</button>
+    <button class="btn" id="sm-videos">Videos &amp; highlight reel ›</button>
   </div>
 </div></section>
 
@@ -221,7 +274,7 @@ details.past .list-item{margin-top:8px;background:var(--panel2)}
 
 <!-- ===== BOOTH ===== -->
 <section id="s-booth" class="screen booth">
-  <div id="frame"><video id="cam" playsinline muted autoplay></video><img id="boothBorder" alt="" class="hidden"></div>
+  <div id="frame"><video id="cam" playsinline muted autoplay></video><img id="boothBorder" alt="" class="hidden"><div id="b-caption" class="hidden"></div></div>
   <button class="back bback hidden" id="b-back">‹ Back</button>
   <div id="b-info"></div>
   <div id="b-wait" class="layer">
@@ -272,6 +325,7 @@ details.past .list-item{margin-top:8px;background:var(--panel2)}
     <div class="sub" id="r-err" style="color:var(--red)"></div>
     <button class="btn" id="r-savelead">Save my details</button>
   </div>
+  <div class="sub" id="r-auto" style="text-align:center"></div>
   <div class="row"><button class="btn danger" id="r-retake">Retake</button><button class="btn primary" id="r-done">Done</button></div>
   <button class="btn ghost" id="r-download" style="min-height:44px">Download file</button>
 </div></section>
@@ -340,12 +394,28 @@ const DB = (() => {
 })();
 
 /* ---------------- settings ---------------- */
+/* ---- speed sections: each section is a stretch of the recording played faster or slower; the gaps play at normal speed ---- */
+function normalizeSegments(list) {
+  const out = []; let prev = 0;
+  (Array.isArray(list) ? list : []).map(g => ({ start: clamp(+g.start || 0, 0, 1), end: clamp(+g.end || 0, 0, 1), speed: clamp(+g.speed || 1, .25, 4) }))
+    .sort((x, y) => x.start - y.start).forEach(g => { const st = Math.max(g.start, prev); if (g.end - st >= .01) { out.push({ start: +st.toFixed(3), end: +g.end.toFixed(3), speed: g.speed }); prev = g.end; } });
+  return out;
+}
+function buildPieces(T, segs) {                 // source seconds -> [{s, e, rate}] covering the whole recording
+  const ps = []; let cur = 0;
+  for (const g of normalizeSegments(segs)) { const st = g.start * T, en = g.end * T; if (st > cur + .001) ps.push({ s: cur, e: st, rate: 1 }); ps.push({ s: st, e: en, rate: g.speed }); cur = en; }
+  if (cur < T - .001 || !ps.length) ps.push({ s: cur, e: T, rate: 1 });
+  return ps;
+}
+const outLen = ps => ps.reduce((a, q) => a + (q.e - q.s) / q.rate, 0);
 const DEFAULTS = {
-  clipLength: 12, countdown: 3, facing: 'user', framing: 'wide', outputWidth: 720, keepOriginals: false,
-  motionOn: true, sensitivity: 0.5, motionDelay: 2, cooldown: 6, showBack: true, overlayFit: 'cover',
-  effect: 'ramp', slowStart: 0.35, slowEnd: 0.7, slowSpeed: 0.4, outroSpeed: 1.4, boomerangSec: 1.5,
+  clipLength: 12, countdown: 3, facing: 'user', framing: 'wide', mirrorFront: true, outputWidth: 720, keepOriginals: false,
+  motionOn: true, sensitivity: 0.5, motionDelay: 2, cooldown: 6, showBack: true, autoReturn: 20,
+  segments: [{ start: .35, end: .7, speed: .4 }, { start: .7, end: 1, speed: 1.4 }], boomerang: false, boomerangSec: 1.5,
+  overlayFit: 'fill',
+  captionText: '', captionPos: 'bottom', captionColor: '#ffd21f', captionSize: 0.06,
   logoCorner: 'br', logoScale: 0.22, logoOpacity: 0.9,
-  musicVolume: 0.9, origVolume: 0.15, fade: 0.6,
+  musicVolume: 0.9, fade: 0.6,
   leadOn: true, leadRequired: false,
   borderId: null, logoId: null, musicId: null,
   pinHash: null,
@@ -400,50 +470,76 @@ async function setNewPin() {
 
 /* ---------------- settings model ---------------- */
 const assetsFor = cfg => ({ border: ASSETS[cfg.borderId], logo: ASSETS[cfg.logoId], music: ASSETS[cfg.musicId] });
-const cleanSettings = o => { const c = { ...DEFAULTS, ...o }; delete c.pinHash; return c; };
+const cleanSettings = o => {
+  const c = { ...DEFAULTS, ...o }; delete c.pinHash;
+  if (o && o.effect) {                                    // older events used a fixed 'effect' — turn it into speed sections
+    if (o.effect === 'ramp') { const x = o.slowStart ?? .35, y = o.slowEnd ?? .7; c.segments = [{ start: x, end: y, speed: o.slowSpeed ?? .4 }, { start: y, end: 1, speed: o.outroSpeed ?? 1.4 }]; }
+    else if (o.effect === 'boomerang') { c.segments = []; c.boomerang = true; }
+    else c.segments = [];
+  }
+  ['effect', 'slowStart', 'slowEnd', 'slowSpeed', 'outroSpeed', 'origVolume'].forEach(k => delete c[k]);
+  c.segments = normalizeSegments(c.segments);
+  return c;
+};
+const SPEED_PRESETS = [
+  ['Classic 360', 'Normal, then slow-mo, then a fast finish', { segments: [{ start: .35, end: .7, speed: .4 }, { start: .7, end: 1, speed: 1.4 }], boomerang: false }],
+  ['Slow-mo moment', 'One dramatic slow-motion section', { segments: [{ start: .4, end: .75, speed: .3 }], boomerang: false }],
+  ['Party fast', 'Fast, slow-mo, fast', { segments: [{ start: 0, end: .3, speed: 2 }, { start: .45, end: .7, speed: .35 }, { start: .7, end: 1, speed: 2.5 }], boomerang: false }],
+  ['Boomerang', 'Plays through, then snaps back', { segments: [], boomerang: true }],
+  ['Real time', 'No speed changes at all', { segments: [], boomerang: false }],
+];
 const SETTINGS_UI = [
-  ['Capture'],
-  ['clipLength', 'range', 'Video length', { min: 3, max: 60, step: 1, fmt: v => v + ' s' }],
-  ['countdown', 'range', 'Countdown', { min: 0, max: 10, step: 1, fmt: v => v + ' s' }],
+  { h: 'Quick style', open: true, desc: 'Pick a look to start from, then fine-tune the sections below.' },
+  ['@presets', 'presets'],
+  { h: 'Recording', open: true, desc: 'How long each video is and how the camera behaves.' },
+  ['clipLength', 'range', 'Video length', { min: 3, max: 60, step: 1, fmt: v => v + ' s', chips: [5, 8, 10, 12, 15, 20, 30] }],
+  ['countdown', 'range', 'Countdown when you tap to start', { min: 0, max: 10, step: 1, fmt: v => v === 0 ? 'None' : v + ' s' }],
   ['facing', 'select', 'Which camera records', { opts: [['user', 'Front camera (selfie)'], ['environment', 'Back camera']] }],
   ['framing', 'select', 'Picture shape', { opts: [['wide', 'Wide — full view, no zoom (3:4)'], ['tall', 'Tall — 9:16 (the phone crops the sides)']], hint: 'Wide shows everything the camera sees, so nothing looks zoomed in.' }],
+  ['mirrorFront', 'check', 'Mirror the front camera', { hint: 'Looks like a mirror, the way people expect a selfie to look. Turn off if text must read the right way round.', show: 'facing=user' }],
   ['outputWidth', 'select', 'Video quality', { num: true, opts: [[720, 'HD 720 (fast, reliable)'], [1080, 'Full HD 1080 (slower)']], hint: 'Videos are finished on the phone in real time — HD 720 is safest for busy events.' }],
-  ['keepOriginals', 'check', 'Keep untouched originals', { hint: 'Uses a lot more storage.' }],
-  ['Motion trigger'],
+  { h: 'Speed, slow-mo & fast-forward', open: true, desc: 'Choose where the video slows down or speeds up. Anywhere you don’t add a section plays at normal speed.' },
+  ['@speed', 'speed'],
+  ['boomerang', 'check', 'Boomerang at the end', { hint: 'After the video finishes, its last moment plays backwards.' }],
+  ['boomerangSec', 'range', 'Boomerang length', { min: .5, max: 3, step: .1, fmt: v => v.toFixed(1) + ' s', show: 'boomerang' }],
+  { h: 'Start when the booth moves', open: false, desc: 'Leave the phone on the 360 platform — it starts recording when the platform moves.' },
   ['motionOn', 'check', 'Start automatically when the rig spins'],
   ['sensitivity', 'range', 'Sensitivity', { min: 0, max: 1, step: .01, fmt: v => v < .33 ? 'Firm spin' : v > .66 ? 'Very sensitive' : 'Balanced', show: 'motionOn' }],
   ['motionDelay', 'range', 'Start recording after movement', { min: 0, max: 10, step: 1, fmt: v => v === 0 ? 'Immediately' : v + ' s', show: 'motionOn' }],
+  ['cooldown', 'range', 'Wait between videos', { min: 2, max: 20, step: 1, fmt: v => v + ' s', show: 'motionOn' }],
   ['@mt', 'motiontest', 'Test movement', { show: 'motionOn' }],
-  ['cooldown', 'range', 'Cooldown between videos', { min: 2, max: 20, step: 1, fmt: v => v + ' s', show: 'motionOn' }],
-  ['Effect'],
-  ['effect', 'select', 'Style', { opts: [['none', 'None — real time'], ['ramp', 'Speed ramp — slow-mo → speed-up'], ['boomerang', 'Boomerang — forward + snap back']] }],
-  ['slowStart', 'range', 'Slow-mo starts at', { min: 0, max: .8, step: .01, fmt: v => Math.round(v * 100) + '%', show: 'effect=ramp' }],
-  ['slowEnd', 'range', 'Slow-mo ends at', { min: .2, max: 1, step: .01, fmt: v => Math.round(v * 100) + '%', show: 'effect=ramp' }],
-  ['slowSpeed', 'range', 'Slow speed', { min: .25, max: 1, step: .05, fmt: v => v.toFixed(2) + '×', show: 'effect=ramp' }],
-  ['outroSpeed', 'range', 'Outro speed', { min: 1, max: 3, step: .1, fmt: v => v.toFixed(1) + '×', show: 'effect=ramp' }],
-  ['boomerangSec', 'range', 'Snap-back length', { min: .5, max: 3, step: .1, fmt: v => v.toFixed(1) + ' s', show: 'effect=boomerang' }],
-  ['Look'],
-  ['borderId', 'asset', 'Transparent photo over the video (PNG)', { kind: 'border', accept: 'image/*' }],
-  ['overlayFit', 'select', 'How the photo fits', { opts: [['cover', 'Fill the frame (crop edges if needed)'], ['fill', 'Stretch to the frame'], ['contain', 'Fit inside the frame']] }],
-  ['logoId', 'asset', 'Logo stamp (PNG)', { kind: 'logo', accept: 'image/*' }],
+  { h: 'Photo on top of the video', open: false, desc: 'A transparent PNG (a frame or design) laid over every video, exactly the size of the video.' },
+  ['borderId', 'asset', 'Transparent photo (PNG)', { kind: 'border', accept: 'image/*' }],
+  ['@overlayinfo', 'overlayinfo'],
+  ['overlayFit', 'select', 'How the photo fits', { opts: [['fill', 'Exactly the video size (recommended)'], ['cover', 'Fill the frame, crop the edges'], ['contain', 'Fit inside, keep its shape']] }],
+  { h: 'Logo stamp', open: false, desc: 'A small logo added in a corner of every video.' },
+  ['logoId', 'asset', 'Logo (PNG)', { kind: 'logo', accept: 'image/*' }],
   ['logoCorner', 'select', 'Logo position', { opts: [['tl', 'Top left'], ['tr', 'Top right'], ['bl', 'Bottom left'], ['br', 'Bottom right'], ['c', 'Centre']] }],
   ['logoScale', 'range', 'Logo size', { min: .05, max: .6, step: .01, fmt: v => Math.round(v * 100) + '% of width' }],
   ['logoOpacity', 'range', 'Logo opacity', { min: .2, max: 1, step: .05, fmt: v => Math.round(v * 100) + '%' }],
-  ['musicId', 'asset', 'Music added to every video (videos record with no sound of their own)', { kind: 'music', accept: 'audio/*' }],
+  { h: 'Text on the video', open: false, desc: 'A line of text on every video, for example the event name or hashtag.' },
+  ['captionText', 'text', 'Text', { placeholder: 'e.g. Sarah & Tom · 12 Oct' }],
+  ['captionPos', 'select', 'Where', { opts: [['bottom', 'Bottom'], ['top', 'Top']], show: 'captionText' }],
+  ['captionColor', 'select', 'Colour', { opts: [['#ffffff', 'White'], ['#ffd21f', 'Yellow'], ['#5b9cff', 'Blue']], show: 'captionText' }],
+  ['captionSize', 'range', 'Size', { min: .03, max: .12, step: .005, fmt: v => Math.round(v * 1000) / 10 + '%', show: 'captionText' }],
+  { h: 'Music', open: false, desc: 'Videos never record sound. The only sound is the music you add here.' },
+  ['musicId', 'asset', 'Music added to every video', { kind: 'music', accept: 'audio/*' }],
   ['musicVolume', 'range', 'Music volume', { min: 0, max: 1, step: .05, fmt: v => Math.round(v * 100) + '%' }],
   ['fade', 'range', 'Music fade in / out', { min: 0, max: 3, step: .1, fmt: v => v.toFixed(1) + ' s' }],
-  ['Guests'],
-  ['showBack', 'check', 'Show a Back button on the booth screen', { hint: 'Turn off when guests use the phone — you can still leave with a 3-second press in the top-left corner.' }],
+  { h: 'Guests & saving', open: false, desc: 'What guests see after their video.' },
   ['leadOn', 'check', 'Ask for email / WhatsApp'],
   ['leadRequired', 'check', 'Make it required', { show: 'leadOn' }],
+  ['autoReturn', 'select', 'Return to the booth by itself', { num: true, opts: [[0, 'Never'], [10, 'After 10 s'], [20, 'After 20 s'], [30, 'After 30 s'], [60, 'After 1 min']], hint: 'Perfect when nobody is standing at the phone. Tapping the screen keeps the video open.' }],
+  ['showBack', 'check', 'Show a Back button on the booth screen', { hint: 'Turn off when guests use the phone — you can still leave with a 3-second press in the top-left corner.' }],
+  ['keepOriginals', 'check', 'Keep the untouched original too', { hint: 'Uses a lot more storage.' }],
 ];
 
 let FORM = null;
 function openForm(o) {
-  FORM = { D: { ...o.initial }, o };
+  FORM = { D: JSON.parse(JSON.stringify(o.initial)), o, open: {} };
   $('#f-title').textContent = o.title; $('#f-back').onclick = o.back;
   $('#f-top').innerHTML = o.top || ''; $('#f-save').textContent = o.saveLabel;
-  $('#f-save').onclick = async () => { const D = FORM.D; if (D.slowEnd <= D.slowStart) D.slowEnd = Math.min(1, D.slowStart + .2); await o.onSave(D); };
+  $('#f-save').onclick = async () => { await o.onSave(FORM.D); };
   $('#f-pin').classList.toggle('hidden', !o.showPin); if (o.showPin) renderPinCard();
   renderFormBody(); if (o.onTopReady) o.onTopReady();
   show('form');
@@ -452,12 +548,21 @@ function renderFormBody() {
   const D = FORM.D, sc = $('#s-form'), y = sc.scrollTop;
   let html = '', open = false;
   for (const f of SETTINGS_UI) {
-    if (f.length === 1) { if (open) html += '</div>'; html += `<h2>${f[0]}</h2><div class="card" style="padding:4px 16px">`; open = true; continue; }
+    if (!Array.isArray(f)) {
+      if (open) html += '</div></details>';
+      const isOpen = FORM.open[f.h] ?? f.open;
+      html += `<details class="sec" data-h="${esc(f.h)}" ${isOpen ? 'open' : ''}><summary>${esc(f.h)}</summary><div class="secbody">${f.desc ? `<div class="secdesc">${esc(f.desc)}</div>` : ''}`; open = true; continue;
+    }
     const [k, type, label, o = {}] = f;
     const show = o.show ? ` data-show="${o.show}"` : '';
-    if (type === 'range') html += `<div class="set"${show}><div class="lab"><span>${label}</span><output data-o="${k}"></output></div><input type="range" data-k="${k}" min="${o.min}" max="${o.max}" step="${o.step}"></div>`;
+    if (type === 'range') html += `<div class="set"${show}><div class="lab"><span>${label}</span><output data-o="${k}"></output></div><input type="range" data-k="${k}" min="${o.min}" max="${o.max}" step="${o.step}">${o.chips ? `<div class="chips">${o.chips.map(v => `<button type="button" class="chip" data-chip="${k}" data-v="${v}">${v}s</button>`).join('')}</div>` : ''}</div>`;
     else if (type === 'check') html += `<div class="set inline"${show}><span>${label}${o.hint ? `<div class="hint">${o.hint}</div>` : ''}</span><input type="checkbox" data-k="${k}"></div>`;
     else if (type === 'select') html += `<div class="set"${show}><div class="lab"><span>${label}</span></div><select data-k="${k}"${o.num ? ' data-num="1"' : ''}>${o.opts.map(([v, t]) => `<option value="${v}">${t}</option>`).join('')}</select>${o.hint ? `<div class="hint">${o.hint}</div>` : ''}</div>`;
+    else if (type === 'text') html += `<div class="set"${show}><div class="lab"><span>${label}</span></div><input type="text" data-k="${k}" maxlength="60" placeholder="${esc(o.placeholder || '')}"></div>`;
+    else if (type === 'presets') html += `<div class="presets">${SPEED_PRESETS.map((p, i) => `<button type="button" class="preset" data-preset="${i}"><b>${p[0]}</b><span>${p[1]}</span></button>`).join('')}</div>`;
+    else if (type === 'speed') html += `<div class="set" id="sp-box"><div class="sub" id="sp-sum"></div><div class="tl" id="sp-tl"></div><div class="tlticks" id="sp-ticks"></div><div id="sp-list"></div>
+      <div class="row" style="margin-top:10px"><button type="button" class="btn ghost" data-add="slow" style="min-height:46px">+ Slow-mo section</button><button type="button" class="btn ghost" data-add="fast" style="min-height:46px">+ Fast-forward section</button></div></div>`;
+    else if (type === 'overlayinfo') html += `<div class="set" id="ov-box"></div>`;
     else if (type === 'motiontest') html += `<div class="set"${show}><div class="lab"><span>Test the movement sensor</span><output id="mt-state"></output></div><div class="meter" style="width:100%"><i id="mt-bar"></i></div><button class="btn ghost" id="mt-btn" style="min-height:44px">Start test</button><div class="hint">Put the phone on the booth, tap Start test, then run the booth. When the bar fills, recording would start. Change Sensitivity until it only fills when the booth moves.</div></div>`;
     else if (type === 'asset') {
       const list = Object.values(ASSETS).filter(a => a.kind === o.kind).sort((a, b) => a.name.localeCompare(b.name));
@@ -465,8 +570,9 @@ function renderFormBody() {
         <div class="filebtn"><img data-prev="${k}" class="hidden" alt=""><label class="btn ghost" style="min-height:44px;flex:1">Upload new…<input type="file" accept="${o.accept}" data-upload="${k}" data-kind="${o.kind}" hidden></label></div></div>`;
     }
   }
-  if (open) html += '</div>';
+  if (open) html += '</div></details>';
   $('#f-body').innerHTML = html;
+  $$('#f-body details.sec').forEach(d => d.addEventListener('toggle', () => { FORM.open[d.dataset.h] = d.open; }));
   $$('#f-body [data-k]').forEach(el => {
     const k = el.dataset.k;
     if (el.type === 'checkbox') el.checked = !!D[k]; else el.value = D[k] == null ? '' : D[k];
@@ -475,14 +581,103 @@ function renderFormBody() {
       syncFormUI();
     });
   });
+  $$('#f-body .chip').forEach(c => c.onclick = () => { D[c.dataset.chip] = +c.dataset.v; const r = $(`#f-body [data-k="${c.dataset.chip}"]`); if (r) r.value = D[c.dataset.chip]; syncFormUI(); });
+  $$('#f-body .preset').forEach(b => b.onclick = () => { const p = SPEED_PRESETS[+b.dataset.preset]; Object.assign(D, JSON.parse(JSON.stringify(p[2]))); FORM.spSig = null; syncFormUI(); toast('Style: ' + p[0]); });
+  $$('#f-body [data-add]').forEach(b => b.onclick = () => addSegment(b.dataset.add));
   const mb = $('#mt-btn'); if (mb) mb.onclick = startMotionTest;
   $$('#f-body [data-upload]').forEach(el => el.addEventListener('change', async () => {
     const f = el.files[0]; if (!f) return;
     const a = { id: uid(), kind: el.dataset.kind, name: f.name, blob: f }; await DB.put('assets', a); ASSETS[a.id] = a;
     FORM.D[el.dataset.upload] = a.id; renderFormBody(); toast('Added ' + f.name);
   }));
-  syncFormUI(); sc.scrollTop = y;
+  FORM.spSig = FORM.ovSig = null; syncFormUI(); sc.scrollTop = y;
 }
+function syncFormUI() {
+  const D = FORM.D;
+  SETTINGS_UI.forEach(f => { if (Array.isArray(f) && f[1] === 'range') { const o = $(`#f-body [data-o="${f[0]}"]`); if (o) o.textContent = f[3].fmt(+D[f[0]]); } });
+  $$('#f-body [data-show]').forEach(el => { const [k, v] = el.dataset.show.split('='); el.classList.toggle('hidden', v ? String(D[k]) !== v : !D[k]); });
+  $$('#f-body [data-prev]').forEach(img => { const a = ASSETS[D[img.dataset.prev]]; if (a && a.kind !== 'music') { img.src = URL.createObjectURL(a.blob); img.classList.remove('hidden'); } else img.classList.add('hidden'); });
+  $$('#f-body .chip').forEach(c => c.classList.toggle('on', +c.dataset.v === +D[c.dataset.chip]));
+  const sig = JSON.stringify([D.segments, D.boomerang]);
+  $$('#f-body .preset').forEach(b => { const p = SPEED_PRESETS[+b.dataset.preset][2]; b.classList.toggle('on', JSON.stringify([normalizeSegments(p.segments), p.boomerang]) === JSON.stringify([normalizeSegments(D.segments), !!D.boomerang])); });
+  const sp = [D.clipLength, D.boomerang, D.boomerangSec, sig].join('|'); if (FORM.spSig !== sp) { FORM.spSig = sp; renderSpeedEditor(); }
+  const ov = [D.borderId, D.framing, D.overlayFit].join('|'); if (FORM.ovSig !== ov) { FORM.ovSig = ov; renderOverlayInfo(); }
+}
+
+/* ---- speed editor ---- */
+const speedName = sp => sp < .95 ? 'Slow-mo' : sp > 1.05 ? 'Fast-forward' : 'Normal speed';
+function paintSpeedSummary() {
+  const D = FORM.D, T = D.clipLength, out = outLen(buildPieces(T, D.segments)) + (D.boomerang ? Math.min(D.boomerangSec, T * .6) : 0);
+  const el = $('#sp-sum'); if (!el) return;
+  el.innerHTML = `You record <b>${T} s</b> → the finished video is about <b>${out.toFixed(1)} s</b>.${D.segments.length ? '' : ' No speed changes yet — it plays in real time.'}${out > 45 ? ' <span class="warn">That is long — finishing it takes about as long as the video.</span>' : ''}`;
+  const tl = $('#sp-tl'); tl.innerHTML = D.segments.map(g => `<i class="${g.speed < 1 ? 'slow' : 'fast'}" style="left:${g.start * 100}%;width:${(g.end - g.start) * 100}%">${g.speed.toFixed(2).replace(/\.?0+$/, '')}×</i>`).join('');
+  $('#sp-ticks').innerHTML = `<span>0 s</span><span>${(T / 2).toFixed(1)} s</span><span>${T} s</span>`;
+}
+function renderSpeedEditor() {
+  const box = $('#sp-box'); if (!box) return;
+  const D = FORM.D, T = D.clipLength, segs = D.segments;
+  paintSpeedSummary();
+  $('#sp-list').innerHTML = segs.map((g, i) => `<div class="seg" data-i="${i}">
+      <div class="seghead"><b class="segtype"></b><button type="button" class="back segdel" data-del>Remove</button></div>
+      <label>From <output data-o="start"></output></label><input type="range" data-f="start" min="0" max="1" step="0.005" value="${g.start}">
+      <label>To <output data-o="end"></output></label><input type="range" data-f="end" min="0" max="1" step="0.005" value="${g.end}">
+      <label>Speed <output data-o="speed"></output></label><input type="range" data-f="speed" min="-2" max="2" step="0.05" value="${Math.log2(g.speed)}">
+    </div>`).join('');
+  const label = (card, g) => {
+    card.querySelector('.segtype').textContent = speedName(g.speed);
+    card.querySelector('[data-o="start"]').textContent = (g.start * T).toFixed(1) + ' s';
+    card.querySelector('[data-o="end"]').textContent = (g.end * T).toFixed(1) + ' s';
+    card.querySelector('[data-o="speed"]').textContent = g.speed.toFixed(2).replace(/\.?0+$/, '') + '×' + (g.speed < .95 ? ' slower' : g.speed > 1.05 ? ' faster' : '');
+  };
+  $$('#sp-list .seg').forEach(card => {
+    const i = +card.dataset.i, g = segs[i]; label(card, g);
+    card.querySelectorAll('input[type=range]').forEach(inp => inp.addEventListener('input', () => {
+      const f = inp.dataset.f; let v = +inp.value;
+      const prevEnd = i > 0 ? segs[i - 1].end : 0, nextStart = i < segs.length - 1 ? segs[i + 1].start : 1;
+      if (f === 'start') { v = clamp(v, prevEnd, g.end - .02); g.start = v; inp.value = v; }
+      else if (f === 'end') { v = clamp(v, g.start + .02, nextStart); g.end = v; inp.value = v; }
+      else g.speed = Math.pow(2, v);
+      label(card, g); paintSpeedSummary(); FORM.spSig = [D.clipLength, D.boomerang, D.boomerangSec, JSON.stringify([D.segments, D.boomerang])].join('|');
+      $$('#f-body .preset').forEach(b => b.classList.remove('on'));
+    }));
+    card.querySelector('[data-del]').onclick = () => { segs.splice(i, 1); FORM.spSig = null; syncFormUI(); };
+  });
+}
+function addSegment(kind) {
+  const segs = FORM.D.segments; let best = null, cur = 0;
+  const gaps = []; segs.forEach(g => { if (g.start - cur > 0) gaps.push([cur, g.start]); cur = g.end; }); if (cur < 1) gaps.push([cur, 1]);
+  gaps.forEach(g => { if (!best || g[1] - g[0] > best[1] - best[0]) best = g; });
+  if (!best || best[1] - best[0] < .06) { toast('No room left — shorten or remove another section first', 3500); return; }
+  const w = Math.max(.05, (best[1] - best[0]) * .6), st = best[0] + ((best[1] - best[0]) - w) / 2;
+  segs.push({ start: +st.toFixed(3), end: +(st + w).toFixed(3), speed: kind === 'slow' ? .4 : 2 });
+  FORM.D.segments = normalizeSegments(segs); FORM.spSig = null; syncFormUI();
+}
+
+/* ---- overlay photo check + live preview ---- */
+const OV_CACHE = new Map();
+async function analyzeOverlay(asset) {
+  if (OV_CACHE.has(asset.id)) return OV_CACHE.get(asset.id);
+  const img = await loadImg(asset.blob); if (!img) return null;
+  const c = document.createElement('canvas'); c.width = 64; c.height = 64; const g = c.getContext('2d'); g.drawImage(img, 0, 0, 64, 64);
+  const d = g.getImageData(0, 0, 64, 64).data; let t = 0; for (let i = 3; i < d.length; i += 4) if (d[i] < 250) t++;
+  const r = { w: img.width, h: img.height, see: t / 4096 }; OV_CACHE.set(asset.id, r); return r;
+}
+async function renderOverlayInfo() {
+  const box = $('#ov-box'); if (!box) return;
+  const D = FORM.D, tall = D.framing === 'tall', tw = 1080, th = tall ? 1920 : 1440, a = ASSETS[D.borderId];
+  let lines = [`Your videos are <b>${tw}×${th}</b> (${tall ? '9:16' : '3:4'}). Best photo size: <b>${tw}×${th}</b> PNG with a see-through middle.`];
+  if (a) {
+    const r = await analyzeOverlay(a);
+    if (r) {
+      const diff = Math.abs(r.w / r.h - tw / th) / (tw / th);
+      lines.push(diff < .03 ? `<span class="ok">✓ ${r.w}×${r.h} matches the video shape</span>` : `<span class="warn">⚠ ${r.w}×${r.h} is a different shape — it will be stretched or cropped to fit</span>`);
+      lines.push(r.see < .01 ? `<span class="warn">⚠ No see-through parts — it will cover the whole video. Use a PNG with a transparent middle.</span>` : `<span class="ok">✓ Transparent: ${Math.round(r.see * 100)}% of it is see-through</span>`);
+    }
+  } else lines.push('<span class="sub">No photo added yet.</span>');
+  const fit = { fill: 'fill', cover: 'cover', contain: 'contain' }[D.overlayFit] || 'fill';
+  box.innerHTML = `<div class="ovrow"><div class="ovprev" style="aspect-ratio:${tw}/${th}"><div class="scene"></div>${a ? `<img alt="" style="object-fit:${fit}" src="${URL.createObjectURL(a.blob)}">` : ''}</div><div class="hint" style="font-size:13px;line-height:1.5">${lines.join('<br>')}</div></div>`;
+}
+
 const MT = { raf: 0 };
 async function startMotionTest() {
   const ok = await Motion.permission();
@@ -494,12 +689,6 @@ async function startMotionTest() {
   const tick = () => { if (!Motion.testing) return; const b = $('#mt-bar'); if (b) b.style.width = clamp(Motion.intensity, 0, 1) * 100 + '%'; MT.raf = requestAnimationFrame(tick); };
   tick();
 }
-function syncFormUI() {
-  const D = FORM.D;
-  SETTINGS_UI.forEach(f => { if (f.length > 1 && f[1] === 'range') { const o = $(`#f-body [data-o="${f[0]}"]`); if (o) o.textContent = f[3].fmt(+D[f[0]]); } });
-  $$('#f-body [data-show]').forEach(el => { const [k, v] = el.dataset.show.split('='); el.classList.toggle('hidden', v ? D[k] !== v : !D[k]); });
-  $$('#f-body [data-prev]').forEach(img => { const a = ASSETS[D[img.dataset.prev]]; if (a && a.kind !== 'music') { img.src = URL.createObjectURL(a.blob); img.classList.remove('hidden'); } else img.classList.add('hidden'); });
-}
 function renderPinCard() {
   $('#f-pin').innerHTML = `<h2>Operator PIN</h2><div class="card"><div class="sub">${S.pinHash ? 'A PIN is set. It locks the app and is the only way out of guest mode.' : 'No PIN set. Set one before handing the phone to guests.'}</div>
     <button class="btn" id="set-pin">${S.pinHash ? 'Change PIN' : 'Set PIN'}</button>${S.pinHash ? '<button class="btn danger" id="set-nopin">Remove PIN</button>' : ''}</div>`;
@@ -509,7 +698,7 @@ function renderPinCard() {
 
 /* ---------------- home ---------------- */
 const allEvents = async () => (await DB.all('events')).sort((a, b) => b.createdAt - a.createdAt);
-const APP_VERSION = '3.4';
+const APP_VERSION = '4.0';
 async function renderHome() {
   const evs = await allEvents();
   const rb = $('#h-resume'); rb.innerHTML = ''; const kid = localStorage.getItem('kiosk');
@@ -638,7 +827,8 @@ const extOf = t => (t || '').includes('mp4') ? 'mp4' : 'webm';
 async function loadImg(blob) { if (!blob) return null; const u = URL.createObjectURL(blob); const i = new Image(); i.src = u; try { await i.decode(); } catch { URL.revokeObjectURL(u); return null; } return i; }
 
 function buildOverlay(W, H, border, logo, cfg) {
-  if (!border && !logo) return null;
+  const caption = (cfg.captionText || '').trim();
+  if (!border && !logo && !caption) return null;
   const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const g = cv.getContext('2d');
   if (border) {
     if (cfg.overlayFit === 'fill') g.drawImage(border, 0, 0, W, H);
@@ -648,6 +838,15 @@ function buildOverlay(W, H, border, logo, cfg) {
     const w = W * clamp(cfg.logoScale, .03, 1), h = w * logo.height / logo.width, m = W * .04;
     const pos = { tl: [m, m], tr: [W - w - m, m], bl: [m, H - h - m], br: [W - w - m, H - h - m], c: [(W - w) / 2, (H - h) / 2] }[cfg.logoCorner] || [W - w - m, H - h - m];
     g.globalAlpha = clamp(cfg.logoOpacity, 0, 1); g.drawImage(logo, pos[0], pos[1], w, h); g.globalAlpha = 1;
+  }
+  if (caption) {
+    let size = Math.round(W * clamp(cfg.captionSize, .03, .12));
+    const setFont = () => { g.font = `800 ${size}px ui-rounded, "SF Pro Rounded", system-ui, sans-serif`; };
+    setFont(); while (g.measureText(caption).width > W * .92 && size > 12) { size -= 2; setFont(); }
+    g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
+    const y = cfg.captionPos === 'top' ? size * 1.2 : H - size * 1.2;
+    g.lineWidth = size * .2; g.strokeStyle = 'rgba(0,0,0,.65)'; g.strokeText(caption, W / 2, y);
+    g.fillStyle = cfg.captionColor || '#ffffff'; g.fillText(caption, W / 2, y);
   }
   return cv;
 }
@@ -667,17 +866,13 @@ async function renderClip(blob, recDur, cfg, assets, onProg = () => {}, onStage 
   const W = Math.round(v.videoWidth * scale / 2) * 2, H = Math.round(v.videoHeight * scale / 2) * 2;
   const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const g = cv.getContext('2d');
   const overlay = buildOverlay(W, H, await loadImg(assets.border && assets.border.blob), await loadImg(assets.logo && assets.logo.blob), cfg);
-  const mirror = cfg.facing === 'user';
+  const mirror = cfg.facing === 'user' && cfg.mirrorFront !== false;
 
-  // timeline
-  const ramp = cfg.effect === 'ramp' && T > .5;
-  let sS = 0, eS = 0;
-  if (ramp) { sS = clamp(cfg.slowStart, 0, .9) * T; eS = clamp(cfg.slowEnd, .05, 1) * T; if (eS <= sS + .05) eS = Math.min(T, sS + .5); }
-  const slow = clamp(cfg.slowSpeed, .25, 1), outro = clamp(cfg.outroSpeed, 1, 3);
-  const rateAt = t => !ramp ? 1 : t < sS ? 1 : t < eS ? slow : outro;
-  const fwdLen = ramp ? sS + (eS - sS) / slow + (T - eS) / outro : T;
+  // timeline: sections played faster/slower, the rest at normal speed
+  const pieces = buildPieces(T, cfg.segments), rateAt = t => { for (const q of pieces) if (t < q.e) return q.rate; return pieces[pieces.length - 1].rate; };
+  const fwdLen = outLen(pieces);
   const maxFrames = Math.floor(280e6 / (W * H * 4));
-  let bw = cfg.effect === 'boomerang' && T > .6 ? Math.min(cfg.boomerangSec, T * .6, maxFrames / 30) : 0;
+  let bw = cfg.boomerang && T > .6 ? Math.min(cfg.boomerangSec, T * .6, maxFrames / 30) : 0;
   const total = fwdLen + (bw > .15 ? bw : 0); if (bw <= .15) bw = 0;
 
   // audio
@@ -721,7 +916,7 @@ async function renderClip(blob, recDur, cfg, assets, onProg = () => {}, onStage 
       if (ctl.stop) phase = 'done';
       const el = (performance.now() - began) / 1000; onProg(clamp(el / total, 0, .99));
       if (phase === 'fwd') {
-        const t = v.currentTime, r = clamp(rateAt(t), .25, 3); if (Math.abs(v.playbackRate - r) > .01) v.playbackRate = r;
+        const t = v.currentTime, r = clamp(rateAt(t), .25, 4); if (Math.abs(v.playbackRate - r) > .01) v.playbackRate = r;
         drawBase();
         if (bw && t >= T - bw && t - lastCap >= 1 / 30) { lastCap = t; captured.push({ t, p: createImageBitmap(cv) }); }
         if (v.ended || t >= T - .04) {
@@ -883,11 +1078,11 @@ async function startBooth() {
   try { audioCtx().resume(); } catch {}                                       // unlock sound inside the tap, never wait for it
   const motionAsk = cfg.motionOn ? Motion.permission() : Promise.resolve(false); // also asked inside the tap
   try { B.stream = await getCam(cfg); } catch (e) { bstatus(camError(e)); return; }
-  const cam = $('#cam'); cam.srcObject = B.stream; cam.classList.toggle('mirror', cfg.facing === 'user'); try { await cam.play(); } catch {}
+  const cam = $('#cam'); cam.srcObject = B.stream; cam.classList.toggle('mirror', cfg.facing === 'user' && cfg.mirrorFront !== false); try { await cam.play(); } catch {}
   if (!cam.videoWidth) { try { await once(cam, 'loadedmetadata', 4000); } catch {} }
   fitFrame();
   const sh = B.stream.__shape || { w: cam.videoWidth, h: cam.videoHeight }; $('#b-info').textContent = `${cfg.facing === 'user' ? 'Front' : 'Back'} camera · ${sh.w}×${sh.h}`;
-  const bi = $('#boothBorder'), bd = assetsFor(cfg).border; bi.style.objectFit = { fill: 'fill', contain: 'contain', cover: 'cover' }[cfg.overlayFit] || 'cover'; if (bd) { bi.src = URL.createObjectURL(bd.blob); bi.classList.remove('hidden'); } else bi.classList.add('hidden');
+  const bi = $('#boothBorder'), bd = assetsFor(cfg).border; bi.style.objectFit = { fill: 'fill', contain: 'contain', cover: 'cover' }[cfg.overlayFit] || 'fill'; if (bd) { bi.src = URL.createObjectURL(bd.blob); bi.classList.remove('hidden'); } else bi.classList.add('hidden');
   $('#b-hero').innerHTML = 'READY<small>tap to start</small>'; $('#b-meter').classList.add('hidden');
   motionAsk.then(ok => {
     if (!cfg.motionOn) return;
@@ -902,6 +1097,11 @@ function fitFrame() {                       // the frame always has the video's 
   const ar = cam.videoWidth / cam.videoHeight, W = innerWidth, H = innerHeight;
   let w = W, h = W / ar; if (h > H) { h = H; w = H * ar; }
   f.style.width = Math.round(w) + 'px'; f.style.height = Math.round(h) + 'px';
+  const cap = $('#b-caption'), cfg = EV && EV.settings, txt = cfg && (cfg.captionText || '').trim();
+  if (cap) {
+    cap.classList.toggle('hidden', !txt);
+    if (txt) { const size = Math.round(w * clamp(cfg.captionSize, .03, .12)); cap.textContent = txt; cap.style.fontSize = size + 'px'; cap.style.color = cfg.captionColor || '#fff'; cap.style.top = cfg.captionPos === 'top' ? size * .7 + 'px' : 'auto'; cap.style.bottom = cfg.captionPos === 'top' ? 'auto' : size * .7 + 'px'; }
+  }
 }
 addEventListener('resize', fitFrame); addEventListener('orientationchange', () => setTimeout(fitFrame, 300));
 function meterLoop() {
@@ -962,7 +1162,7 @@ async function handleRecording(blob, dur) {
   bphase('processing'); setProg(0); setStage('Starting…'); $('#p-skip').classList.add('hidden');
   const cfg = EV.settings, clip = { id: uid(), eventId: EV.id, createdAt: Date.now(), trigger: B.trigger, duration: dur, lead: null, deliveries: [], note: '' };
   let processed = blob, failed = false; const t0 = performance.now();
-  const assets = assetsFor(cfg); const needs = cfg.effect !== 'none' || assets.border || assets.logo || assets.music || cfg.facing === 'user' || blob.__external;
+  const assets = assetsFor(cfg); const needs = (cfg.segments && cfg.segments.length) || cfg.boomerang || assets.border || assets.logo || assets.music || (cfg.captionText || '').trim() || (cfg.facing === 'user' && cfg.mirrorFront !== false) || blob.__external;
   if (needs) {
     const ctl = { stop: false };
     const skip = new Promise((_, rej) => { ctl.skip = () => { ctl.stop = true; rej(new Error('skipped')); }; });
@@ -1000,6 +1200,7 @@ async function exitRequest() {
 
 /* ---------------- review ---------------- */
 let CLIP = null, CLIP_URL = null;
+const REV = { t: 0, left: 0, paused: false };
 const clipFile = (clip, ev = EV, n = '') => new File([clip.processed], `${ev ? baseName(ev) : 'party-machine'}-${clip.id.slice(0, 6)}${n}.${extOf(clip.type)}`, { type: clip.type });
 function openReview(clip) {
   CLIP = clip; if (CLIP_URL) URL.revokeObjectURL(CLIP_URL); CLIP_URL = URL.createObjectURL(clip.processed);
@@ -1008,10 +1209,18 @@ function openReview(clip) {
   $('#r-leadtitle').textContent = cfg.leadRequired ? 'Where should we send it?' : 'Want it sent to you too? (optional)';
   ['#r-email', '#r-wa'].forEach(s => $(s).value = ''); $('#r-err').textContent = ''; $('#r-savelead').textContent = 'Save my details'; $('#r-savelead').disabled = false; CLIP._leadSaved = false;
   $('#r-done').disabled = false; show('review');
+  clearInterval(REV.t); const secs = cfg.autoReturn | 0, note = $('#r-auto'); REV.left = secs; REV.paused = false; note.textContent = '';
+  if (secs > 0) REV.t = setInterval(() => {
+    if (!$('#s-review.active')) { clearInterval(REV.t); return; }
+    if (REV.paused || (cfg.leadOn && cfg.leadRequired && !CLIP._leadSaved)) { REV.left = secs; note.textContent = ''; return; }
+    REV.left--; note.textContent = `Back to the booth in ${REV.left}s — tap anywhere to stay`;
+    if (REV.left <= 0) { clearInterval(REV.t); note.textContent = ''; $('#r-done').click(); }
+  }, 1000);
 }
+$('#s-review').addEventListener('pointerdown', () => { REV.left = EV ? EV.settings.autoReturn | 0 : 0; });
 async function logDelivery(kind) { if (!CLIP || CLIP.deliveries.some(d => d.kind === kind)) return; CLIP.deliveries.push({ kind, at: Date.now() }); await DB.put('clips', stripTmp(CLIP)); }
 const stripTmp = c => { const { _leadSaved, ...rest } = c; return rest; };
-const shareClip = async () => { if (await shareFiles([clipFile(CLIP)], 'Your Party Machines video')) logDelivery('share'); else { download(clipFile(CLIP), clipFile(CLIP).name); logDelivery('download'); } };
+const shareClip = async () => { REV.paused = true; try { if (await shareFiles([clipFile(CLIP)], 'Your Party Machines video')) logDelivery('share'); else { download(clipFile(CLIP), clipFile(CLIP).name); logDelivery('download'); } } finally { REV.paused = false; REV.left = EV.settings.autoReturn | 0; } };
 $('#r-share').onclick = shareClip; $('#r-share-top').onclick = shareClip;
 $('#r-download').onclick = () => { const f = clipFile(CLIP); download(f, f.name); logDelivery('download'); };
 $('#r-savelead').onclick = async () => {
@@ -1027,8 +1236,55 @@ $('#r-done').onclick = () => {
   $('#r-video').pause(); show('booth'); afterReview();
 };
 $('#r-retake').onclick = async () => { if (!confirm('Delete this video and retake?')) return; await DB.del('clips', CLIP.id); EV.clipCount = Math.max(0, EV.clipCount - 1); await DB.put('events', EV); $('#r-video').pause(); show('booth'); afterReview(); };
-function afterReview() { if (B.stream) resumeWaiting(); else { bstatus(''); bphase('resume'); } }
+function afterReview() { clearInterval(REV.t); if (B.stream) resumeWaiting(); else { bstatus(''); bphase('resume'); } }
 function resumeWaiting() { bphase('waiting'); Motion.hold(EV.settings.cooldown * 1000); setProg(0); }
+
+/* ---------------- exports (shared by Videos and Summary) ---------------- */
+async function exportZip(ev, clips) {
+  toast('Packaging…', 8000); const reel = await DB.get('kv', 'reel:' + ev.id); const base = baseName(ev);
+  const files = clips.map((c, i) => ({ name: `${String(i + 1).padStart(2, '0')}_${base}.${extOf(c.type)}`, blob: c.processed }));
+  if (reel) files.unshift({ name: `00_Highlight_${base}.${extOf(reel.type)}`, blob: reel });
+  const zip = await makeZip(files), f = new File([zip], base + '_videos.zip', { type: 'application/zip' });
+  if (!(await shareFiles([f], ev.name))) download(f, f.name);
+}
+function exportLeads(ev, clips) {
+  const q = t => /[",\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
+  const rows = clips.filter(c => c.lead).map(c => [q(c.lead.email || ''), q(c.lead.whatsapp || ''), c.lead.consent, new Date(c.lead.at).toISOString(), c.id].join(','));
+  const f = new File([['email,whatsapp,consent_marketing,captured_at,clip_id', ...rows].join('\n')], baseName(ev) + '_leads.csv', { type: 'text/csv' });
+  shareFiles([f], 'Leads').then(ok => ok || download(f, f.name));
+}
+
+/* ---------------- end-of-event summary ---------------- */
+const fmtDur = sec => { sec = Math.round(sec); const m = Math.floor(sec / 60); return m ? `${m} min ${sec % 60} s` : `${sec} s`; };
+$('#hub-summary').onclick = () => openSummary();
+$('#sm-back').onclick = () => openHub(CUR.id);
+async function openSummary() {
+  const ev = CUR, clips = (await DB.byEvent(ev.id)).sort((a, b) => a.createdAt - b.createdAt), n = clips.length;
+  const total = clips.reduce((a, c) => a + (c.duration || 0), 0);
+  const leads = clips.filter(c => c.lead && (c.lead.email || c.lead.whatsapp)), shared = clips.filter(c => c.deliveries && c.deliveries.length);
+  const bytes = clips.reduce((a, c) => a + ((c.processed && c.processed.size) || 0) + ((c.original && c.original.size) || 0), 0);
+  const motion = clips.filter(c => c.trigger === 'motion').length;
+  const hours = new Map(); clips.forEach(c => { const h = new Date(c.createdAt).getHours(); hours.set(h, (hours.get(h) || 0) + 1); });
+  const keys = [...hours.keys()]; const h0 = keys.length ? Math.min(...keys) : 0, h1 = keys.length ? Math.max(...keys) : 0;
+  let busy = null; hours.forEach((v, h) => { if (!busy || v > busy[1]) busy = [h, v]; });
+  const span = n > 1 ? (clips[n - 1].createdAt - clips[0].createdAt) / 3600000 : 0, perHour = n ? (n / Math.max(1, span)).toFixed(1) : '0';
+  const longest = clips.reduce((m, c) => Math.max(m, c.duration || 0), 0), A = assetsFor(ev.settings), st = ev.settings;
+  const hh = h => String(h).padStart(2, '0') + ':00', t = ms => new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  $('#sm-title').textContent = ev.name; $('#sm-sub').textContent = n ? `${fmtDate(clips[0].createdAt)} – ${t(clips[n - 1].createdAt)}` : 'No videos recorded yet';
+  $('#sm-tiles').innerHTML = [[n, 'Videos'], [fmtDur(total), 'Total video time'], [leads.length, 'Leads collected'], [shared.length, 'Videos shared or saved'], [motion + ' / ' + (n - motion), 'Started by movement / tap'], [fmtBytes(bytes), 'Stored on this phone']].map(([b, l]) => `<div class="tile"><b>${b}</b><span>${l}</span></div>`).join('');
+  const rows = []; for (let h = h0; h <= h1 && n; h++) rows.push([h, hours.get(h) || 0]);
+  const mx = Math.max(1, ...rows.map(r => r[1]));
+  $('#sm-chart').innerHTML = rows.length ? rows.map(([h, v]) => `<div class="${busy && busy[0] === h ? 'top' : ''}"><span>${v || ''}</span><i style="height:${Math.round(v / mx * 90)}%"></i><span>${String(h).padStart(2, '0')}</span></div>`).join('') : '';
+  $('#sm-busy').textContent = busy ? `Busiest hour: ${hh(busy[0])} with ${busy[1]} video${busy[1] === 1 ? '' : 's'} · about ${perHour} videos an hour` : 'Record some videos to see when your booth was busiest.';
+  const styleBits = [st.segments.length ? `${st.segments.length} speed section${st.segments.length > 1 ? 's' : ''}` : 'real time', st.boomerang ? 'boomerang' : '', A.border ? 'photo overlay' : '', A.logo ? 'logo' : '', (st.captionText || '').trim() ? 'text “' + st.captionText.trim() + '”' : '', A.music ? 'music: ' + A.music.name : 'no music'].filter(Boolean);
+  $('#sm-details').innerHTML = `<h2 style="margin:0">Details</h2><div class="sub" style="line-height:1.7">${n ? `First video ${t(clips[0].createdAt)} · last video ${t(clips[n - 1].createdAt)}<br>Longest video ${fmtDur(longest)}<br>` : ''}Style: ${esc(styleBits.join(' · '))}<br>${st.facing === 'user' ? 'Front' : 'Back'} camera · ${st.framing === 'tall' ? '9:16' : '3:4'} · ${st.outputWidth}p</div>`;
+  const text = [`Party Machines 360 — ${ev.name}`, n ? `${fmtDate(clips[0].createdAt)} to ${t(clips[n - 1].createdAt)}` : '', `${n} videos · ${fmtDur(total)} of video`, `${leads.length} leads collected`, `${shared.length} videos shared or saved`, busy ? `Busiest hour: ${hh(busy[0])} (${busy[1]} videos)` : ''].filter(Boolean).join('\n');
+  $('#sm-share').onclick = async () => { try { if (navigator.share) { await navigator.share({ title: ev.name + ' summary', text }); return; } } catch (e) { if (e.name === 'AbortError') return; } try { await navigator.clipboard.writeText(text); toast('Summary copied'); } catch { prompt('Copy the summary', text); } };
+  $('#sm-zip').disabled = !n; $('#sm-zip').onclick = () => exportZip(ev, clips);
+  $('#sm-csv').disabled = !leads.length; $('#sm-csv').onclick = () => exportLeads(ev, clips);
+  $('#sm-videos').onclick = () => openVideos();
+  show('summary');
+}
 
 /* ---------------- videos (per event) ---------------- */
 let CUR_CLIPS = [];
@@ -1043,19 +1299,8 @@ async function openVideos() {
     <button class="btn" id="ev-zip" ${n ? '' : 'disabled'}>Export all videos (.zip)</button>
     <button class="btn" id="ev-csv" ${CUR_CLIPS.some(c => c.lead) ? '' : 'disabled'}>Export leads (.csv)</button>`;
   $$('[data-batch]', a).forEach(b => b.onclick = async () => { const files = batches[+b.dataset.batch].map(c => clipFile(c, CUR)); if (await shareFiles(files, CUR.name)) { for (const c of batches[+b.dataset.batch]) { c.deliveries.push({ kind: 'photos', at: Date.now() }); await DB.put('clips', c); } toast('Done'); } else toast('Sharing isn’t available here — use the .zip'); });
-  $('#ev-zip').onclick = async () => {
-    toast('Packaging…', 8000); const reel = await DB.get('kv', 'reel:' + CUR.id); const base = baseName(CUR);
-    const files = CUR_CLIPS.map((c, i) => ({ name: `${String(i + 1).padStart(2, '0')}_${base}.${extOf(c.type)}`, blob: c.processed }));
-    if (reel) files.unshift({ name: `00_Highlight_${base}.${extOf(reel.type)}`, blob: reel });
-    const zip = await makeZip(files), f = new File([zip], base + '_videos.zip', { type: 'application/zip' });
-    if (!(await shareFiles([f], CUR.name))) download(f, f.name);
-  };
-  $('#ev-csv').onclick = () => {
-    const q = s => /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
-    const rows = CUR_CLIPS.filter(c => c.lead).map(c => [q(c.lead.email || ''), q(c.lead.whatsapp || ''), c.lead.consent, new Date(c.lead.at).toISOString(), c.id].join(','));
-    const f = new File([['email,whatsapp,consent_marketing,captured_at,clip_id', ...rows].join('\n')], baseName(CUR) + '_leads.csv', { type: 'text/csv' });
-    shareFiles([f], 'Leads').then(ok => ok || download(f, f.name));
-  };
+  $('#ev-zip').onclick = () => exportZip(CUR, CUR_CLIPS);
+  $('#ev-csv').onclick = () => exportLeads(CUR, CUR_CLIPS);
   renderReelBox(); renderGrid(); show('videos');
 }
 async function renderReelBox() {
