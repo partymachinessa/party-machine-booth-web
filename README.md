@@ -44,3 +44,8 @@ python3 -m http.server 8123   # then open http://localhost:8123
 
 ## Files
 `index.html` the whole app · `sw.js` offline cache (bump `VERSION` to force an update) · `manifest.webmanifest` · icons
+
+## v4.3 — Bluetooth LED remote
+Top-right button on the home screen opens a panel to control a BanlanX SP648E (SP6xxE protocol, service FFE0 / char FFE1).
+Needs Web Bluetooth: Chrome on Android, or the Bluefy browser on iPhone (Safari/Chrome on iOS cannot). Close the BanlanX app first.
+Command bytes live in `PROFILES` inside the `LED` module of index.html.

@@ -215,6 +215,23 @@ details.past .list-item{margin-top:8px;background:var(--panel2)}
 .seg2{display:flex;background:var(--panel2);border-radius:99px;padding:4px;gap:4px;width:100%}
 .seg2 button{flex:1;border:0;background:none;border-radius:99px;padding:9px;font-weight:700;color:var(--mut);cursor:pointer}
 .seg2 button.on{background:var(--accent);color:var(--ink)}
+.home{position:relative}
+.ledbtn{position:absolute;right:0;top:2px;width:46px;height:46px;border-radius:50%;border:1px solid var(--line);background:var(--panel);display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:2}
+.ledbtn svg{width:22px;height:22px;stroke:var(--blue-soft);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ledbtn i{position:absolute;right:3px;bottom:3px;width:12px;height:12px;border-radius:50%;background:var(--mut);border:2px solid var(--bg)}
+.ledbtn.on i{background:var(--ok)}.ledbtn.busy i{background:var(--blue);animation:blink 1s infinite}.ledbtn.warn i{background:var(--accent)}
+.ledbtn.on svg{stroke:var(--ok)}
+#led-sheet{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.6);display:none;align-items:flex-end}
+#led-sheet.show{display:flex}
+#led-sheet .panel{background:var(--bg);border:1px solid var(--line);border-radius:24px 24px 0 0;width:100%;max-height:92vh;overflow-y:auto;padding:18px 18px calc(env(safe-area-inset-bottom) + 24px);display:flex;flex-direction:column;gap:12px}
+.ledstat{display:flex;gap:10px;align-items:flex-start;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:12px}
+.ledstat .dot{width:12px;height:12px;border-radius:50%;background:var(--mut);margin-top:5px;flex:none}
+.ledstat.on .dot{background:var(--ok)}.ledstat.busy .dot{background:var(--blue);animation:blink 1s infinite}.ledstat.warn .dot{background:var(--accent)}
+.swatches{display:flex;gap:10px;flex-wrap:wrap}
+.swatches button{width:40px;height:40px;border-radius:50%;border:2px solid var(--line);cursor:pointer}
+#led-sheet input[type=color]{width:100%;height:46px;border:1px solid var(--line);border-radius:12px;background:var(--panel2);padding:4px}
+#led-log{width:100%;min-height:110px;font:11px ui-monospace,Menlo,monospace;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px;color:var(--text)}
+#led-sheet .off{opacity:.45;pointer-events:none}
 @media (prefers-reduced-motion:reduce){.rings i,.recpill i{animation:none}}
 </style>
 </head>
@@ -222,6 +239,7 @@ details.past .list-item{margin-top:8px;background:var(--panel2)}
 
 <!-- ===== HOME ===== -->
 <section id="s-home" class="screen active"><div class="wrap home">
+  <button class="ledbtn" id="led-btn" aria-label="LED lights"><svg viewBox="0 0 24 24"><path d="M6.5 7.5l11 9-5.5 4.5V3l5.5 4.5-11 9"/></svg><i></i></button>
   <div class="welcome"><img class="mark" src="logo.png" alt="Party Machines 360 logo" width="150" height="150"><h1>Welcome</h1><div class="sub">Party Machines Booth</div></div>
   <div id="h-resume"></div>
   <button class="btn primary big" id="h-new">Start new event</button>
@@ -371,6 +389,31 @@ details.past .list-item{margin-top:8px;background:var(--panel2)}
   <button class="back" id="pin-cancel">Cancel</button></div>
 <div class="modal" id="modal"><div class="seg2 hidden" id="m-tabs" style="max-width:420px"><button data-v="main" class="on">With template</button><button data-v="plain">Plain</button></div><video class="player" id="m-video" playsinline loop controls></video>
   <div class="row" style="width:100%;max-width:420px"><button class="btn" id="m-share">Share</button><button class="btn danger" id="m-del">Delete</button><button class="btn" id="m-close">Close</button></div></div>
+<div id="led-sheet"><div class="panel">
+  <div class="top"><h1 style="flex:1;font-size:22px">LED lights</h1><button class="back" id="led-close">Close</button></div>
+  <div class="ledstat" id="led-stat"><div class="dot"></div><div><b id="led-stat-t">Not connected</b><div class="sub" id="led-stat-d"></div></div></div>
+  <div id="led-unsupported" class="card hidden"></div>
+  <div class="row" id="led-connrow"><button class="btn primary" id="led-connect">Connect</button><button class="btn hidden" id="led-reconnect"></button></div>
+  <button class="btn ghost hidden" id="led-showall" style="min-height:44px">Still nothing? Show every Bluetooth device</button>
+  <div class="card off" id="led-ctrl">
+    <h2 style="margin:0">Controls</h2>
+    <div class="set"><div class="lab"><span>Command set</span></div><select id="led-prof"></select><div class="hint" id="led-prof-h"></div></div>
+    <div class="row"><button class="btn primary" id="led-on" style="min-height:50px">On</button><button class="btn" id="led-off" style="min-height:50px">Off</button></div>
+    <div class="set"><div class="lab"><span>Brightness</span><output id="led-bright-o">100%</output></div><input type="range" id="led-bright" min="1" max="255" value="255"></div>
+    <div class="set"><div class="lab"><span>Colour</span></div><input type="color" id="led-color" value="#ffd21f"><div class="swatches" style="margin-top:10px" id="led-sw"></div></div>
+    <div class="set"><div class="lab"><span>Moving effect</span><output id="led-fx-o">1</output></div>
+      <input type="range" id="led-fx" min="1" max="146" value="1"><div class="row" style="margin-top:8px"><button class="btn" id="led-fx-go" style="min-height:46px">Play effect</button></div></div>
+    <div class="set"><div class="lab"><span>Effect speed</span><output id="led-sp-o">5</output></div><input type="range" id="led-sp" min="1" max="10" value="5"></div>
+  </div>
+  <details class="sec" id="led-adv"><summary>Advanced: Bluetooth explorer</summary><div class="secbody">
+    <div class="secdesc">Shows what the controller offers and lets you send raw bytes. Use it to find the real commands, then copy the log to me.</div>
+    <div class="set"><div class="lab"><span>Write to</span></div><select id="led-char"></select></div>
+    <div class="set"><div class="lab"><span>Bytes (hex)</span></div><input type="text" id="led-hex" placeholder="e.g. FF 00 00 1E" autocapitalize="characters" autocomplete="off"></div>
+    <div class="row"><button class="btn" id="led-send" style="min-height:46px">Send</button><button class="btn" id="led-notify" style="min-height:46px">Listen for replies</button></div>
+    <textarea id="led-log" readonly></textarea>
+    <button class="btn ghost" id="led-copylog" style="min-height:44px;margin-top:8px">Copy log</button>
+  </div></details>
+</div></div>
 <div id="idle-pv" class="hidden"></div>
 <div class="toast" id="toast"></div>
 
@@ -758,7 +801,7 @@ function renderPinCard() {
 
 /* ---------------- home ---------------- */
 const allEvents = async () => (await DB.all('events')).sort((a, b) => b.createdAt - a.createdAt);
-const APP_VERSION = '4.2';
+const APP_VERSION = '4.3';
 async function renderHome() {
   const evs = await allEvents();
   const rb = $('#h-resume'); rb.innerHTML = ''; const kid = localStorage.getItem('kiosk');
@@ -1587,6 +1630,173 @@ $('#m-del').onclick = async () => { if (!confirm('Delete this clip?')) return; a
   if (S.pinHash) { await pinPrompt('Operator PIN', 'Enter your PIN to open the app.', verifyPin, true); }
   showHome();
 })();
+
+/* =====================================================================
+   LED lights (Bluetooth) — self-contained. Controls a BanlanX SP648E (SP6xxE family) LED controller
+   with Web Bluetooth. Protocol: github.com/monty68/uniled (custom_components/uniled/lib/ble/banlanx_6xx.py),
+   which lists SP638E/SP648E explicitly. Does not touch the booth.
+   iPhone Safari has no Web Bluetooth: use the free "Bluefy" browser, or Chrome on Android.
+   ===================================================================== */
+const LED = (() => {
+  const SERVICES = [0xffe0, 0xe0ff, 0xffe5, 0xfff0, 0xffb0, 0xae00, 0xff00, 0xfee0, 0xfd00, '6e400001-b5a3-f393-e0a9-e50e24dcca9e'];
+  const MFR = 0x5053;                                  // 20563 — BanlanX SP6xxE manufacturer id (uniled: BANLANX6XX_MANUFACTURER_ID)
+  const KEY = 'led.last', st = { dev: null, server: null, chars: [], notifyChar: null, rx: [], timeout: 12000, state: { level: 255, rgb: [255, 210, 31], bright: 255 } };
+
+  /* --- command sets. Edit these to change the bytes sent; everything else uses them. --- */
+  const frame = (cmd, data) => Uint8Array.from([0x53, cmd, 0x00, 0x01, 0x00, data.length, ...data]);   // 53 cmd 00 01 00 len data…
+  const PROFILES = {
+    sp6xxe: {
+      label: 'BanlanX SP6xxE (SP648E) — from uniled',
+      hint: 'Packet: 53 cmd 00 01 00 len data. Power 50, brightness 51, colour 52, mode 53, speed 54.',
+      power: on => [frame(0x50, [on ? 1 : 0])],
+      bright: v => [frame(0x51, [0x00, v])],
+      color: (r, g, b, level) => [frame(0x53, [0x01, 0x01]), frame(0x52, [r, g, b, level])],        // static colour mode, then the colour
+      effect: n => [frame(0x53, [0x03, n])],                                                          // dynamic colour mode, effect n
+      speed: v => [frame(0x54, [v])],
+      query: () => [frame(0x02, [0x01])],
+    },
+    sp110e: {
+      label: 'Older SP110E style (4 bytes) — fallback',
+      hint: 'Only for older controllers. Power is a toggle, so On and Off both send the toggle.',
+      power: () => [Uint8Array.from([0, 0, 0, 0xAA])],
+      bright: v => [Uint8Array.from([v, 0, 0, 0x2A])],
+      color: (r, g, b) => [Uint8Array.from([r, g, b, 0x1E])],
+      effect: n => [Uint8Array.from([n, 0, 0, 0x2C])],
+      speed: v => [Uint8Array.from([v * 25 > 255 ? 255 : v * 25, 0, 0, 0x03])],
+      query: () => [],
+    },
+  };
+  const prof = () => PROFILES[(document.getElementById('led-prof') || {}).value] || PROFILES.sp6xxe;
+
+  const supported = () => !!(navigator.bluetooth && navigator.bluetooth.requestDevice);
+  const el = id => document.getElementById(id);
+  const logLines = [];
+  function log(m) { logLines.push(new Date().toLocaleTimeString() + '  ' + m); if (logLines.length > 250) logLines.shift(); const t = el('led-log'); if (t) { t.value = logLines.join('\n'); t.scrollTop = t.scrollHeight; } }
+  function setStatus(kind, title, detail) {                    // kind: off | busy | on | warn
+    el('led-stat').className = 'ledstat ' + kind; el('led-stat-t').textContent = title; el('led-stat-d').textContent = detail || '';
+    el('led-btn').className = 'ledbtn ' + kind;
+    el('led-ctrl').classList.toggle('off', kind !== 'on'); el('led-connect').textContent = kind === 'on' ? 'Disconnect' : 'Connect'; el('led-connect').disabled = kind === 'busy';
+  }
+  const last = () => { try { return JSON.parse(localStorage.getItem(KEY) || 'null'); } catch { return null; } };
+  const hex = u8 => [...u8].map(b => b.toString(16).padStart(2, '0')).join(' ').toUpperCase();
+  const parseHex = t => { const h = (t || '').replace(/0x/gi, '').replace(/[^0-9a-f]/gi, ''); if (!h || h.length % 2) return null; return Uint8Array.from(h.match(/../g).map(x => parseInt(x, 16))); };
+
+  async function enumerate(server) {
+    st.chars = []; const sel = el('led-char'); sel.innerHTML = '';
+    let services = []; try { services = await server.getPrimaryServices(); } catch (e) { log('Could not list services: ' + e.message); }
+    for (const sv of services) {
+      log('Service ' + sv.uuid);
+      let cs = []; try { cs = await sv.getCharacteristics(); } catch (e) { log('  (no access: ' + e.message + ')'); }
+      for (const c of cs) {
+        const pr = Object.entries(c.properties).filter(([, v]) => v).map(([k]) => k).join(',');
+        log('  Characteristic ' + c.uuid + '  [' + pr + ']'); st.chars.push({ sv, c });
+        if (c.properties.write || c.properties.writeWithoutResponse) { const o = document.createElement('option'); o.value = String(st.chars.length - 1); o.textContent = c.uuid.slice(4, 8).toUpperCase() + ' (' + sv.uuid.slice(4, 8).toUpperCase() + ') ' + pr; sel.appendChild(o); }
+      }
+    }
+    const pref = [...sel.options].findIndex(o => o.textContent.startsWith('FFE1')); if (pref >= 0) sel.selectedIndex = pref;
+    if (!sel.options.length) { const o = document.createElement('option'); o.textContent = 'Nothing writable found'; sel.appendChild(o); }
+  }
+  const chosen = () => { const o = el('led-char').value; return o !== '' && st.chars[+o] ? st.chars[+o].c : null; };
+
+  async function sendOne(bytes, why) {
+    const c = chosen(); if (!c) { log('No writable characteristic selected.'); toast('Connect first'); return false; }
+    try { if (c.properties.write) await c.writeValue(bytes); else await c.writeValueWithoutResponse(bytes); log('→ ' + hex(bytes) + (why ? '   (' + why + ')' : '')); return true; }
+    catch (e) { log('Send failed: ' + e.message); setStatus('warn', 'Lost the controller', 'Sending failed. Is it still powered on and in range?'); return false; }
+  }
+  async function sendAll(packets, why) { for (let i = 0; i < packets.length; i++) { if (!(await sendOne(packets[i], why))) return false; if (i < packets.length - 1) await sleep(120); } return true; }
+
+  /* status replies can arrive in 20-byte pieces: put them back together, then read the fields (uniled offsets) */
+  function onNotify(u8) {
+    st.rx.push(...u8);
+    while (st.rx.length) {
+      if (st.rx[0] !== 0x53) { st.rx.shift(); continue; }
+      if (st.rx.length < 6) return;
+      const need = 6 + st.rx[5]; if (st.rx.length < need) return;
+      const f = st.rx.splice(0, need); log('← ' + hex(f));
+      if (f[1] === 0x02 && f.length >= 43) {
+        const on = f[29] > 0, mode = f[32], effect = f[33], lvl = f[35], rgb = f.slice(37, 40), speed = f[42];
+        st.state = { level: lvl, rgb, bright: lvl }; const stt = on ? 'on' : 'off';
+        el('led-stat-d').textContent = (st.dev && st.dev.name || 'Controller') + ' · lights ' + stt + ' · mode ' + mode + '/' + effect;
+        if (lvl >= 1) { el('led-bright').value = lvl; el('led-bright-o').textContent = Math.round(lvl / 255 * 100) + '%'; }
+        if (speed >= 1 && speed <= 10) { el('led-sp').value = speed; el('led-sp-o').textContent = speed; }
+        el('led-color').value = '#' + rgb.map(x => x.toString(16).padStart(2, '0')).join('');
+      }
+    }
+  }
+  async function afterConnect(dev, server) {
+    st.dev = dev; st.server = server; st.rx = [];
+    dev.addEventListener('gattserverdisconnected', () => { st.server = null; setStatus('warn', 'Disconnected', 'The controller went away. Tap Connect to find it again.'); log('Disconnected.'); });
+    localStorage.setItem(KEY, JSON.stringify({ id: dev.id, name: dev.name || '' })); await enumerate(server);
+    st.notifyChar = (st.chars.find(x => x.c.uuid.slice(4, 8) === 'ffe1' && (x.c.properties.notify || x.c.properties.indicate)) || {}).c || null;
+    if (st.notifyChar) { try { await st.notifyChar.startNotifications(); st.notifyChar.addEventListener('characteristicvaluechanged', e => onNotify(new Uint8Array(e.target.value.buffer))); } catch (e) { log('Replies not available: ' + e.message); } }
+    setStatus('on', 'Connected', (dev.name || 'LED controller') + (st.chars.length ? '' : ' — no usable services found'));
+    el('led-reconnect').classList.add('hidden'); log('Connected to ' + (dev.name || dev.id));
+    if (prof().query().length) { await sleep(150); sendAll(prof().query(), 'ask for current state'); }
+  }
+  async function connectDevice(dev) {
+    setStatus('busy', 'Connecting…', (dev.name || 'LED controller') + ' — this takes a few seconds');
+    try { const server = await withTimeout(dev.gatt.connect(), st.timeout, 'timeout'); await afterConnect(dev, server); return true; }
+    catch (e) { setStatus('warn', 'Could not reach the controller', e.message === 'timeout' ? 'No answer after ' + Math.round(st.timeout / 1000) + ' seconds. Check it is powered on and within about 5 m, and close the BanlanX app — the controller only talks to one phone at a time.' : e.message); log('Connect failed: ' + e.message); return false; }
+  }
+  async function scan(opts = {}) {
+    if (!supported()) return showUnsupported();
+    setStatus('busy', 'Looking for the controller…', 'Pick it from the list that appears (SP648E, or a name starting with SP).');
+    let dev; const base = { optionalServices: SERVICES };
+    try {
+      try { dev = await navigator.bluetooth.requestDevice(opts.all ? { ...base, acceptAllDevices: true } : opts.name ? { ...base, filters: [{ name: opts.name }] } : { ...base, filters: [{ manufacturerData: [{ companyIdentifier: MFR }] }] }); }
+      catch (e) { if (e.name === 'TypeError' && !opts.all) { log('This browser cannot filter by maker; showing every Bluetooth device.'); dev = await navigator.bluetooth.requestDevice({ ...base, acceptAllDevices: true }); } else throw e; }
+    } catch (e) {
+      const nf = e.name === 'NotFoundError'; setStatus('warn', nf ? 'Nothing found' : 'Bluetooth problem', nf ? 'No controller was chosen or found. Check it is powered on and within about 5 m, and that the BanlanX app is closed.' : e.message); log('Scan: ' + e.name + ' ' + e.message);
+      el('led-showall').classList.toggle('hidden', !nf); return;
+    }
+    el('led-showall').classList.add('hidden'); await connectDevice(dev);
+  }
+  function showUnsupported() {
+    const box = el('led-unsupported'); box.classList.remove('hidden'); el('led-connrow').classList.add('hidden');
+    box.innerHTML = `<b>This browser can’t use Bluetooth</b><div class="sub" style="margin-top:6px;line-height:1.5">iPhone Safari (and Chrome on iPhone) do not allow websites to use Bluetooth. Open this page in the free <b>Bluefy</b> browser from the App Store, or use Chrome on an Android phone.</div><button class="btn" id="led-copylink" style="margin-top:10px">Copy this page’s link</button>`;
+    el('led-copylink').onclick = async () => { try { await navigator.clipboard.writeText(location.href.split('#')[0]); toast('Link copied — paste it into Bluefy'); } catch { prompt('Copy this link', location.href); } };
+    setStatus('warn', 'Bluetooth not available here', 'See the note below.');
+  }
+  async function disconnect() { try { st.dev && st.dev.gatt.connected && st.dev.gatt.disconnect(); } catch {} st.server = null; setStatus('off', 'Not connected', ''); log('Disconnected by you.'); }
+  async function tryReconnect() {
+    const l = last(); if (!l) return;
+    const rb = el('led-reconnect'); rb.textContent = 'Reconnect to ' + (l.name || 'last controller'); rb.classList.remove('hidden');
+    try { if (navigator.bluetooth.getDevices) { const known = await navigator.bluetooth.getDevices(); const d = known.find(x => x.id === l.id); if (d) { log('Remembered device found: ' + (d.name || d.id)); if (await connectDevice(d)) return; } } }
+    catch (e) { log('Auto-reconnect not possible: ' + e.message); }
+  }
+  function open() {
+    el('led-sheet').classList.add('show');
+    if (!supported()) { showUnsupported(); return; }
+    el('led-unsupported').classList.add('hidden'); el('led-connrow').classList.remove('hidden');
+    if (!(st.server && st.dev && st.dev.gatt.connected)) { setStatus('off', 'Not connected', last() ? 'Last used: ' + (last().name || 'a controller') : 'Tap Connect to find your LED controller.'); tryReconnect(); }
+  }
+
+  const rgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+  function init() {
+    el('led-btn').onclick = open; el('led-close').onclick = () => el('led-sheet').classList.remove('show');
+    el('led-sheet').addEventListener('click', e => { if (e.target.id === 'led-sheet') el('led-sheet').classList.remove('show'); });
+    el('led-connect').onclick = () => (st.server && st.dev && st.dev.gatt.connected) ? disconnect() : scan();
+    el('led-reconnect').onclick = () => { const l = last(); scan({ name: l && l.name }); };
+    el('led-showall').onclick = () => scan({ all: true });
+    const ps = el('led-prof'); Object.entries(PROFILES).forEach(([k, v]) => { const o = document.createElement('option'); o.value = k; o.textContent = v.label; ps.appendChild(o); });
+    const syncHint = () => { el('led-prof-h').textContent = prof().hint; localStorage.setItem('led.prof', ps.value); }; ps.value = localStorage.getItem('led.prof') || 'sp6xxe'; if (!ps.value) ps.value = 'sp6xxe'; ps.onchange = syncHint; syncHint();
+    el('led-on').onclick = () => sendAll(prof().power(true), 'on'); el('led-off').onclick = () => sendAll(prof().power(false), 'off');
+    const br = el('led-bright'); br.addEventListener('input', () => { el('led-bright-o').textContent = Math.round(br.value / 255 * 100) + '%'; localStorage.setItem('led.bright', br.value); });
+    br.addEventListener('change', () => { st.state.level = +br.value; sendAll(prof().bright(+br.value), 'brightness ' + br.value); });
+    const col = el('led-color'); col.addEventListener('change', () => { localStorage.setItem('led.color', col.value); sendAll(prof().color(...rgb(col.value), +br.value || 255), 'colour ' + col.value); });
+    ['#ffd21f', '#2f7bff', '#ffffff', '#ff3b3b', '#2ee26b', '#a855f7'].forEach(c => { const b = document.createElement('button'); b.style.background = c; b.setAttribute('aria-label', c); b.onclick = () => { col.value = c; col.dispatchEvent(new Event('change')); }; el('led-sw').appendChild(b); });
+    const fx = el('led-fx'), sp = el('led-sp'); fx.addEventListener('input', () => el('led-fx-o').textContent = fx.value); sp.addEventListener('input', () => el('led-sp-o').textContent = sp.value);
+    sp.addEventListener('change', () => sendAll(prof().speed(+sp.value), 'speed ' + sp.value)); el('led-fx-go').onclick = () => sendAll([...prof().effect(+fx.value), ...prof().speed(+sp.value)], 'effect ' + fx.value);
+    try { if (localStorage.getItem('led.bright')) { br.value = localStorage.getItem('led.bright'); br.dispatchEvent(new Event('input')); } if (localStorage.getItem('led.color')) col.value = localStorage.getItem('led.color'); } catch {}
+    el('led-send').onclick = () => { const b = parseHex(el('led-hex').value); if (!b) { toast('Type bytes like 53 50 00 01 00 01 01'); return; } sendOne(b, 'manual'); };
+    el('led-notify').onclick = async () => { const c = chosen(); if (!c) { toast('Connect first'); return; } try { if (!c.properties.notify && !c.properties.indicate) { log('That characteristic does not send replies.'); return; } await c.startNotifications(); c.addEventListener('characteristicvaluechanged', e => log('← ' + hex(new Uint8Array(e.target.value.buffer)))); log('Listening for replies on ' + c.uuid.slice(4, 8).toUpperCase()); } catch (e) { log('Listen failed: ' + e.message); } };
+    el('led-copylog').onclick = async () => { try { await navigator.clipboard.writeText(logLines.join('\n')); toast('Log copied'); } catch { prompt('Copy the log', logLines.join('\n')); } };
+    setStatus('off', 'Not connected', '');
+  }
+  return { init, open, _st: st, _PROFILES: PROFILES };
+})();
+LED.init();
+
 window.PM = { renderClip, renderReel, makeZip, makeThumb, openVideo, DEFAULTS, MIME, audioCtx };
 </script>
 </body>
