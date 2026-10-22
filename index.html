@@ -224,6 +224,15 @@ details.past .list-item{margin-top:8px;background:var(--panel2)}
 .ledbtn i{position:absolute;right:3px;bottom:3px;width:12px;height:12px;border-radius:50%;background:var(--mut);border:2px solid var(--bg)}
 .ledbtn.on i{background:var(--ok)}.ledbtn.busy i{background:var(--blue);animation:blink 1s infinite}.ledbtn.warn i{background:var(--accent)}
 .ledbtn.on svg{stroke:var(--ok)}
+#dr-sheet,#qr-modal{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.6);display:none;align-items:flex-end}
+#dr-sheet.show,#qr-modal.show{display:flex}
+#dr-sheet .panel,#qr-modal .panel{background:var(--bg);border:1px solid var(--line);border-radius:24px 24px 0 0;width:100%;max-height:92vh;overflow-y:auto;padding:18px 18px calc(env(safe-area-inset-bottom) + 24px);display:flex;flex-direction:column;gap:12px}
+#qr-modal{z-index:70;align-items:center;justify-content:center}
+#qr-modal .panel{border-radius:24px;max-width:380px;align-items:center;text-align:center}
+#qr-canvas{width:min(78vw,300px);height:min(78vw,300px);image-rendering:pixelated;border-radius:12px;background:#fff}
+#dr-sheet input[type=text]{width:100%}
+#dr-sheet ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--mut)}
+.drbar{height:8px;border-radius:6px;background:var(--panel2);overflow:hidden}.drbar i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
 #led-sheet{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.6);display:none;align-items:flex-end}
 #led-sheet.show{display:flex}
 #led-sheet .panel{background:var(--bg);border:1px solid var(--line);border-radius:24px 24px 0 0;width:100%;max-height:92vh;overflow-y:auto;padding:18px 18px calc(env(safe-area-inset-bottom) + 24px);display:flex;flex-direction:column;gap:12px}
@@ -247,6 +256,7 @@ details.past .list-item{margin-top:8px;background:var(--panel2)}
   <div id="h-resume"></div>
   <button class="btn primary big" id="h-new">Start new event</button>
   <button class="btn ghost" id="h-defaults">Default settings &amp; PIN</button>
+  <button class="btn ghost" id="h-drive">Online QR · Google Drive</button>
   <div class="spacer"></div>
   <details class="past" id="h-past" open>
     <summary><span>Past events <span class="sub" id="h-count"></span></span></summary>
@@ -370,6 +380,8 @@ details.past .list-item{margin-top:8px;background:var(--panel2)}
   <div class="seg2 hidden" id="r-tabs"><button data-v="main" class="on">With template</button><button data-v="plain">Plain</button></div>
   <video class="player" id="r-video" playsinline muted loop controls></video>
   <div class="sub" id="r-note" style="text-align:center"></div>
+  <button class="btn big hidden" id="r-qr">Get a QR code to download</button>
+  <div class="sub" id="r-qrmsg" style="text-align:center;margin-top:-6px"></div>
   <button class="btn primary big" id="r-share">Share · AirDrop · WhatsApp · Save to Photos</button>
   <div class="sub" id="r-sharehint" style="text-align:center;margin-top:-6px;color:var(--accent)"></div>
   <div class="sub" style="text-align:center;margin-top:-6px">In the share sheet choose <b>Save Video</b> to put it in Photos. Tap the video for sound.</div>
@@ -393,6 +405,31 @@ details.past .list-item{margin-top:8px;background:var(--panel2)}
   <button class="back" id="pin-cancel">Cancel</button></div>
 <div class="modal" id="modal"><div class="seg2 hidden" id="m-tabs" style="max-width:420px"><button data-v="main" class="on">With template</button><button data-v="plain">Plain</button></div><video class="player" id="m-video" playsinline loop controls></video>
   <div class="row" style="width:100%;max-width:420px"><button class="btn" id="m-share">Share</button><button class="btn danger" id="m-del">Delete</button><button class="btn" id="m-close">Close</button></div></div>
+<div id="dr-sheet"><div class="panel">
+  <div class="top" style="display:flex;align-items:center"><h1 style="flex:1;font-size:22px">Online QR · Google Drive</h1><button class="back" id="dr-close">Close</button></div>
+  <div class="ledstat" id="dr-stat"><div class="dot"></div><div><b id="dr-stat-t">Not set up</b><div class="sub" id="dr-stat-d"></div></div></div>
+  <div class="sub">Each video is uploaded to your Google Drive. Guests scan a QR code and download it from their own phone. Needs internet.</div>
+  <label class="sub">Google Client ID</label>
+  <input type="text" id="dr-id" placeholder="123456-abc.apps.googleusercontent.com" autocapitalize="off" autocomplete="off" spellcheck="false">
+  <div class="row"><button class="btn primary" id="dr-signin">Save &amp; sign in</button><button class="btn" id="dr-test">Test upload</button></div>
+  <label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="dr-auto"> Upload every video automatically (QR is instant)</label>
+  <div class="sub" id="dr-msg"></div>
+  <details class="card" id="dr-help"><summary><b>One-time Google setup</b></summary>
+    <ol>
+      <li>On a computer open <b>console.cloud.google.com</b> and create a project called “Party Machines Booth”.</li>
+      <li>Go to <b>APIs &amp; Services → Library</b>, search <b>Google Drive API</b> and click <b>Enable</b>.</li>
+      <li>Go to <b>OAuth consent screen</b> (Google Auth Platform): choose <b>External</b>, enter an app name and your email, and under <b>Test users</b> add your own Google email.</li>
+      <li>Go to <b>Credentials → Create credentials → OAuth client ID</b>, type <b>Web application</b>. Under <b>Authorized JavaScript origins</b> add <b>https://partymachinessa.github.io</b>.</li>
+      <li>Copy the <b>Client ID</b> it shows and paste it above.</li>
+    </ol>
+  </details>
+</div></div>
+<div id="qr-modal"><div class="panel">
+  <h2 style="margin:0">Scan to get your video</h2>
+  <canvas id="qr-canvas"></canvas>
+  <div class="sub" id="qr-link" style="word-break:break-all"></div>
+  <div class="row" style="width:100%"><button class="btn" id="qr-copy">Copy link</button><button class="btn primary" id="qr-close">Done</button></div>
+</div></div>
 <div id="led-sheet"><div class="panel">
   <div class="top"><h1 style="flex:1;font-size:22px">LED lights</h1><button class="back" id="led-close">Close</button></div>
   <div class="ledstat" id="led-stat"><div class="dot"></div><div><b id="led-stat-t">Not connected</b><div class="sub" id="led-stat-d"></div></div></div>
@@ -421,6 +458,7 @@ details.past .list-item{margin-top:8px;background:var(--panel2)}
 <div id="idle-pv" class="hidden"></div>
 <div class="toast" id="toast"></div>
 
+<script src="qr.js"></script>
 <script>
 'use strict';
 /* =====================================================================
@@ -805,7 +843,7 @@ function renderPinCard() {
 
 /* ---------------- home ---------------- */
 const allEvents = async () => (await DB.all('events')).sort((a, b) => b.createdAt - a.createdAt);
-const APP_VERSION = '4.4';
+const APP_VERSION = '4.5';
 async function renderHome() {
   const evs = await allEvents();
   const rb = $('#h-resume'); rb.innerHTML = ''; const kid = localStorage.getItem('kiosk');
@@ -1417,7 +1455,7 @@ async function handleRecording(blob, dur) {
   clip.processed = processed; clip.type = processed.type || blob.type; if (!clip.plain) clip.plain = null;
   clip.original = (cfg.keepOriginals || failed) && processed !== blob ? blob : null;
   try { clip.thumb = await withTimeout(makeThumb(processed), 8000); clip.thumbAt = 3; } catch { clip.thumb = null; }
-  try { await DB.put('clips', clip); EV.clipCount++; await DB.put('events', EV); }
+  try { await DB.put('clips', clip); EV.clipCount++; await DB.put('events', EV); DRIVE.autoUpload(clip, EV); }
   catch (e) { toast('Storage is full — export and delete old videos'); }
   openReview(clip);
 }
@@ -1455,7 +1493,7 @@ function openReview(clip) {
   const cfg = EV.settings; $('#r-lead').classList.toggle('hidden', !cfg.leadOn);
   $('#r-leadtitle').textContent = cfg.leadRequired ? 'Where should we send it?' : 'Want it sent to you too? (optional)';
   ['#r-email', '#r-wa'].forEach(s => $(s).value = ''); $('#r-err').textContent = ''; $('#r-savelead').textContent = 'Save my details'; $('#r-savelead').disabled = false; CLIP._leadSaved = false;
-  $('#r-done').disabled = false; show('review');
+  $('#r-done').disabled = false; show('review'); DRIVE.updateButton();
   clearInterval(REV.t); const secs = cfg.autoReturn | 0, note = $('#r-auto'); REV.left = secs; REV.paused = false; note.textContent = '';
   if (secs > 0) REV.t = setInterval(() => {
     if (!$('#s-review.active')) { clearInterval(REV.t); return; }
@@ -1671,6 +1709,128 @@ $('#m-del').onclick = async () => { if (!confirm('Delete this clip?')) return; a
    which lists SP638E/SP648E explicitly. Does not touch the booth.
    iPhone Safari has no Web Bluetooth: use the free "Bluefy" browser, or Chrome on Android.
    ===================================================================== */
+/* ---------------- Online QR: upload to the operator's Google Drive, show a QR to the share link ---------------- */
+const DRIVE = (() => {
+  const SCOPE = 'https://www.googleapis.com/auth/drive.file', UP = {};      // UP: clip id -> upload promise
+  let cfg = { clientId: '', auto: false, rootId: '', events: {} }, tok = null, exp = 0, loaded = false, gisP = null;
+  const online = () => navigator.onLine !== false;
+  async function load() {
+    if (loaded) return cfg; loaded = true;
+    cfg = { ...cfg, ...((await DB.get('kv', 'drive')) || {}) };
+    try { const t = JSON.parse(localStorage.getItem('drive.tok') || 'null'); if (t && t.exp > Date.now() + 60000) { tok = t.tok; exp = t.exp; } } catch {}
+    return cfg;
+  }
+  const save = () => DB.put('kv', cfg, 'drive');
+  const gis = () => gisP || (gisP = new Promise((res, rej) => {
+    if (window.google && google.accounts && google.accounts.oauth2) return res();
+    const sc = document.createElement('script'); sc.src = 'https://accounts.google.com/gsi/client'; sc.onload = res;
+    sc.onerror = () => { gisP = null; rej(new Error('Could not reach Google — check the internet.')); }; document.head.appendChild(sc);
+  }));
+  const valid = () => !!tok && Date.now() < exp - 60000;
+  async function token(interactive = true) {
+    if (valid()) return tok;
+    if (!cfg.clientId) throw new Error('Add your Google Client ID first (Home → Online QR).');
+    if (!online()) throw new Error('No internet.');
+    if (!interactive) throw new Error('Sign in again in Home → Online QR.');
+    await gis();
+    return new Promise((res, rej) => {
+      const c = google.accounts.oauth2.initTokenClient({ client_id: cfg.clientId, scope: SCOPE,
+        callback: r => { if (r.error) return rej(new Error(r.error_description || r.error)); tok = r.access_token; exp = Date.now() + (+r.expires_in || 3600) * 1000;
+          try { localStorage.setItem('drive.tok', JSON.stringify({ tok, exp })); } catch {} res(tok); },
+        error_callback: e => rej(new Error(e && e.type === 'popup_closed' ? 'Sign-in was closed.' : 'Google sign-in could not open (' + ((e && e.type) || 'blocked') + '). Try opening the app in Safari or Bluefy instead of the home-screen icon.')) });
+      c.requestAccessToken({ prompt: cfg.signedOnce ? '' : 'consent' });
+    });
+  }
+  async function api(path, opt = {}, retry = true) {
+    const t = await token(), r = await fetch('https://www.googleapis.com/drive/v3/' + path, { ...opt, headers: { Authorization: 'Bearer ' + t, 'Content-Type': 'application/json' } });
+    if (r.status === 401 && retry) { tok = null; exp = 0; return api(path, opt, false); }
+    if (!r.ok) { const e = new Error('Google Drive said ' + r.status); e.status = r.status; e.body = (await r.text()).slice(0, 200); throw e; }
+    return r.json();
+  }
+  const mkFolder = async (name, parent) => (await api('files?fields=id', { method: 'POST', body: JSON.stringify({ name, mimeType: 'application/vnd.google-apps.folder', ...(parent ? { parents: [parent] } : {}) }) })).id;
+  async function eventFolder(ev) {
+    if (!cfg.rootId) { cfg.rootId = await mkFolder('Party Machines 360'); await save(); }
+    if (!cfg.events[ev.id]) { cfg.events[ev.id] = await mkFolder(baseName(ev), cfg.rootId); await save(); }
+    return cfg.events[ev.id];
+  }
+  async function putFile(file, parent, onp) {
+    const t = await token(), init = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id', { method: 'POST',
+      headers: { Authorization: 'Bearer ' + t, 'Content-Type': 'application/json; charset=UTF-8', 'X-Upload-Content-Type': file.type || 'video/mp4' }, body: JSON.stringify({ name: file.name, parents: [parent] }) });
+    if (!init.ok) { const e = new Error('Google Drive said ' + init.status); e.status = init.status; throw e; }
+    const url = init.headers.get('Location'); if (!url) throw new Error('Google Drive did not accept the upload.');
+    return new Promise((res, rej) => { const x = new XMLHttpRequest(); x.open('PUT', url);
+      x.upload.onprogress = e => { if (e.lengthComputable && onp) onp(e.loaded / e.total); };
+      x.onload = () => x.status < 300 ? res() : rej(new Error('Upload failed (' + x.status + ').')); x.onerror = () => rej(new Error('Upload failed — check the internet.')); x.send(file); });
+  }
+  async function upload(clip, ev, onp) {
+    const files = clipFiles(clip, ev), total = files.reduce((a, f) => a + f.size, 0); let done = 0;
+    for (let attempt = 0; ; attempt++) {
+      try {
+        const parent = await eventFolder(ev), folder = await mkFolder('Video ' + clip.id.slice(0, 6) + ' ' + new Date(clip.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), parent);
+        await api('files/' + folder + '/permissions', { method: 'POST', body: JSON.stringify({ role: 'reader', type: 'anyone' }) });
+        done = 0; for (const f of files) { const base = done; await putFile(f, folder, p => onp && onp((base + p * f.size) / total)); done += f.size; }
+        return 'https://drive.google.com/drive/folders/' + folder;
+      } catch (e) {
+        if (attempt === 0 && e.status === 404) { cfg.rootId = ''; cfg.events = {}; await save(); continue; }      // folder was deleted in Drive: start fresh
+        throw e;
+      }
+    }
+  }
+  /* one upload per clip, shared by the automatic upload and the QR button */
+  function ensureLink(clip, ev, onp) {
+    if (clip.driveUrl) return Promise.resolve(clip.driveUrl);
+    if (UP[clip.id]) { UP[clip.id].subs.push(onp); return UP[clip.id].p; }
+    const subs = [onp];
+    const p = (async () => { await load(); const url = await upload(clip, ev, f => subs.forEach(fn => fn && fn(f)));
+      clip.driveUrl = url; const { _leadSaved, ...rest } = clip; try { await DB.put('clips', rest); } catch {} return url; })();
+    UP[clip.id] = { p, subs }; p.then(() => { delete UP[clip.id]; }, () => { delete UP[clip.id]; });
+    return p;
+  }
+  function showQR(url) {
+    const q = qrcode(0, 'M'); q.addData(url); q.make(); const n = q.getModuleCount(), px = 8, quiet = 4, size = (n + quiet * 2) * px, cv = $('#qr-canvas');
+    cv.width = cv.height = size; const g = cv.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, size, size); g.fillStyle = '#000';
+    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (q.isDark(r, c)) g.fillRect((c + quiet) * px, (r + quiet) * px, px, px);
+    $('#qr-link').textContent = url; $('#qr-modal').classList.add('show');
+    $('#qr-copy').onclick = async () => { try { await navigator.clipboard.writeText(url); toast('Link copied'); } catch { toast('Press and hold the link to copy'); } };
+  }
+  $('#qr-close').onclick = () => $('#qr-modal').classList.remove('show');
+  async function updateButton() {
+    await load(); const b = $('#r-qr'); if (!b) return; b.classList.toggle('hidden', !cfg.clientId);
+    b.textContent = CLIP && CLIP.driveUrl ? 'Show QR code' : 'Get a QR code to download'; $('#r-qrmsg').textContent = '';
+  }
+  $('#r-qr').onclick = async () => {
+    const b = $('#r-qr'), msg = $('#r-qrmsg'); if (!CLIP) return;
+    if (!online()) { msg.textContent = 'No internet right now. Use Share instead.'; return; }
+    REV.paused = true; b.disabled = true;
+    try { msg.textContent = 'Uploading… 0%'; const url = await ensureLink(CLIP, EV, f => { msg.textContent = 'Uploading… ' + Math.round(f * 100) + '%'; }); msg.textContent = ''; b.textContent = 'Show QR code'; logDelivery('qr'); showQR(url); }
+    catch (e) { msg.textContent = (e && e.message || 'Upload failed') + (e && e.status === 403 ? ' (Drive API not enabled?)' : ''); }
+    finally { b.disabled = false; REV.paused = false; REV.left = EV.settings.autoReturn | 0; }
+  };
+  /* settings sheet */
+  const stat = (cls, t, d) => { $('#dr-stat').className = 'ledstat ' + cls; $('#dr-stat-t').textContent = t; $('#dr-stat-d').textContent = d || ''; };
+  const refreshStat = () => !cfg.clientId ? stat('', 'Not set up', 'Follow the one-time Google setup below.') : valid() ? stat('on', 'Signed in', 'Videos can be uploaded.') : stat('warn', 'Sign in needed', 'Tap “Save & sign in”. Google sign-in lasts about an hour.');
+  async function openSheet() { await load(); $('#dr-id').value = cfg.clientId || ''; $('#dr-auto').checked = !!cfg.auto; $('#dr-msg').textContent = ''; $('#dr-help').open = !cfg.clientId; refreshStat(); $('#dr-sheet').classList.add('show'); if (cfg.clientId && online()) gis().catch(() => {}); }
+  $('#h-drive').onclick = openSheet; $('#dr-close').onclick = () => $('#dr-sheet').classList.remove('show');
+  $('#dr-auto').onchange = async () => { cfg.auto = $('#dr-auto').checked; await save(); };
+  $('#dr-signin').onclick = async () => {
+    const id = $('#dr-id').value.trim(), m = $('#dr-msg'); if (!/\.apps\.googleusercontent\.com$/.test(id)) { m.textContent = 'That does not look like a Client ID. It ends in .apps.googleusercontent.com'; return; }
+    if (id !== cfg.clientId) { cfg.clientId = id; cfg.rootId = ''; cfg.events = {}; tok = null; exp = 0; }
+    m.textContent = 'Opening Google sign-in…'; await save();
+    try { await token(); cfg.signedOnce = true; await save(); m.textContent = 'Signed in.'; } catch (e) { m.textContent = e.message; }
+    refreshStat();
+  };
+  $('#dr-test').onclick = async () => {
+    const m = $('#dr-msg'); m.textContent = 'Testing…';
+    try { await token(); const f = await mkFolder('Party Machines test'); await api('files/' + f, { method: 'DELETE' }).catch(() => {}); m.textContent = 'Works — Google Drive is connected.'; }
+    catch (e) { m.textContent = e.message + (e.body ? ' — ' + e.body : ''); } refreshStat();
+  };
+  return {
+    updateButton,
+    /* called right after a video is saved: upload quietly if automatic upload is on and we are signed in */
+    async autoUpload(clip, ev) { try { await load(); if (!cfg.auto || !cfg.clientId || !valid() || !online()) return; await ensureLink(clip, ev); } catch (e) { console.warn('auto upload failed', e); } },
+  };
+})();
+
 const LED = (() => {
   const SERVICES = [0xffe0, 0xe0ff, 0xffe5, 0xfff0, 0xffb0, 0xae00, 0xff00, 0xfee0, 0xfd00, '6e400001-b5a3-f393-e0a9-e50e24dcca9e'];
   const MFR = 0x5053;                                  // 20563 — BanlanX SP6xxE manufacturer id (uniled: BANLANX6XX_MANUFACTURER_ID)
