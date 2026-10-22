@@ -6,6 +6,10 @@ A 360-booth kiosk that runs in Safari and installs to the iPhone Home Screen. No
 
 **Leave-it-on-the-booth mode:** put the phone on the 360 platform, start the booth, and when the platform moves the phone detects it, shows a short countdown on the camera (Settings → *Start recording after movement*, 0–10 s) and records. Use *Test movement* in settings to tune Sensitivity. Pick the front or back camera and a *Wide* picture shape (no zoom).
 
+**Silent videos:** the app never records sound (it never asks for the microphone). The only audio in a video is the music you add in settings.
+
+**Processing safety:** every step has a time limit, a *Skip effects* button appears if it drags, and a video always ends up on the review screen (with a note if effects were skipped). Review has a **Share** button in the top-right corner (AirDrop, WhatsApp, Messages, Save Video to Photos). A web app cannot save to Photos silently — that needs the share sheet or the native app.
+
 **What works:** motion trigger + tap start, countdown ring, recording, speed-ramp / boomerang / no effect,
 border + logo overlay, music bed with fade, lead capture (email / WhatsApp), per-event library,
 highlight reel, Save-to-Photos batches via the share sheet, `.zip` and `leads.csv` export,

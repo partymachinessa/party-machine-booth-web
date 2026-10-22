@@ -39,6 +39,8 @@ h2{font-size:13px;margin:10px 0 0;color:var(--mut);text-transform:uppercase;lett
 .mark{width:42px;height:42px;border-radius:12px;flex:none}
 .back{display:inline-flex;align-items:center;gap:6px;align-self:flex-start;background:rgba(47,123,255,.22);border:1px solid rgba(120,170,255,.35);color:var(--blue-soft);font-weight:700;font-size:15px;padding:9px 16px 9px 12px;border-radius:99px;cursor:pointer}
 .back:active{filter:brightness(1.3)}
+.rhead{display:flex;justify-content:space-between;align-items:center}
+.sharebtn{background:var(--accent)!important;color:var(--ink)!important;border-color:transparent!important}
 
 .card{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:12px}
 .card.live{border-color:rgba(47,123,255,.6);background:linear-gradient(160deg,rgba(47,123,255,.2),var(--panel) 55%)}
@@ -237,6 +239,8 @@ details.past .list-item{margin-top:8px;background:var(--panel2)}
   <div id="b-proc" class="layer hidden">
     <div class="ringwrap"><svg viewBox="0 0 200 200"><circle class="bg" cx="100" cy="100" r="90"/><circle class="fg" id="p-ring" cx="100" cy="100" r="90" style="transition:none"/></svg><div class="num" id="p-num">0%</div></div>
     <div style="font-weight:700">Working on it…</div>
+    <div class="sub" id="p-stage" style="color:#cfe0ff"></div>
+    <button class="btn ghost hidden" id="p-skip" style="width:auto;min-height:44px">Skip effects and continue</button>
   </div>
   <div id="b-resume" class="layer hidden">
     <img class="mark" src="icon-192.png" alt="" style="width:72px;height:72px;border-radius:18px">
@@ -252,11 +256,12 @@ details.past .list-item{margin-top:8px;background:var(--panel2)}
 
 <!-- ===== REVIEW ===== -->
 <section id="s-review" class="screen"><div class="wrap">
-  <button class="back" id="r-back">‹ Back</button>
-  <div class="top"><h1 style="flex:1">Your video</h1><button class="back" id="r-retake" style="color:var(--red)">Retake</button></div>
-  <video class="player" id="r-video" playsinline loop controls></video>
-  <button class="btn primary" id="r-share">Share / AirDrop / Save to Photos</button>
-  <button class="btn" id="r-download">Download file</button>
+  <div class="rhead"><button class="back" id="r-back">‹ Back</button><button class="back sharebtn" id="r-share-top">Share ⤴</button></div>
+  <h1>Your video</h1>
+  <video class="player" id="r-video" playsinline muted loop controls></video>
+  <div class="sub" id="r-note" style="text-align:center"></div>
+  <button class="btn primary big" id="r-share">Share · AirDrop · WhatsApp · Save to Photos</button>
+  <div class="sub" style="text-align:center;margin-top:-6px">In the share sheet choose <b>Save Video</b> to put it in Photos. Tap the video for sound.</div>
   <div class="card lead hidden" id="r-lead">
     <b id="r-leadtitle">Want it sent to you too?</b>
     <input type="email" id="r-email" placeholder="Email" autocomplete="email" inputmode="email">
@@ -265,7 +270,8 @@ details.past .list-item{margin-top:8px;background:var(--panel2)}
     <div class="sub" id="r-err" style="color:var(--red)"></div>
     <button class="btn" id="r-savelead">Save my details</button>
   </div>
-  <button class="btn primary big" id="r-done">Done</button>
+  <div class="row"><button class="btn danger" id="r-retake">Retake</button><button class="btn primary" id="r-done">Done</button></div>
+  <button class="btn ghost" id="r-download" style="min-height:44px">Download file</button>
 </div></section>
 
 <!-- ===== overlays ===== -->
@@ -292,6 +298,7 @@ const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString
 const fmtDate = t => new Date(t).toLocaleString([], {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'});
 const fmtBytes = b => b > 1e9 ? (b/1e9).toFixed(1)+' GB' : b > 1e6 ? Math.round(b/1e6)+' MB' : Math.round(b/1e3)+' KB';
 function toast(msg, ms = 2600) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), ms); }
+const withTimeout = (p, ms, msg) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(msg || 'timeout')), ms))]);
 function once(el, ev, ms = 15000) {
   return new Promise((res, rej) => {
     const ok = () => { cleanup(); res(); }, bad = () => { cleanup(); rej(new Error('media error')); };
@@ -420,9 +427,8 @@ const SETTINGS_UI = [
   ['logoCorner', 'select', 'Logo position', { opts: [['tl', 'Top left'], ['tr', 'Top right'], ['bl', 'Bottom left'], ['br', 'Bottom right'], ['c', 'Centre']] }],
   ['logoScale', 'range', 'Logo size', { min: .05, max: .6, step: .01, fmt: v => Math.round(v * 100) + '% of width' }],
   ['logoOpacity', 'range', 'Logo opacity', { min: .2, max: 1, step: .05, fmt: v => Math.round(v * 100) + '%' }],
-  ['musicId', 'asset', 'Music bed', { kind: 'music', accept: 'audio/*' }],
+  ['musicId', 'asset', 'Music added to every video (videos record with no sound of their own)', { kind: 'music', accept: 'audio/*' }],
   ['musicVolume', 'range', 'Music volume', { min: 0, max: 1, step: .05, fmt: v => Math.round(v * 100) + '%' }],
-  ['origVolume', 'range', 'Original audio under music', { min: 0, max: 1, step: .05, fmt: v => Math.round(v * 100) + '%' }],
   ['fade', 'range', 'Music fade in / out', { min: 0, max: 3, step: .1, fmt: v => v.toFixed(1) + ' s' }],
   ['Guests'],
   ['showBack', 'check', 'Show a Back button on the booth screen', { hint: 'Turn off when guests use the phone — you can still leave with a 3-second press in the top-left corner.' }],
@@ -501,7 +507,7 @@ function renderPinCard() {
 
 /* ---------------- home ---------------- */
 const allEvents = async () => (await DB.all('events')).sort((a, b) => b.createdAt - a.createdAt);
-const APP_VERSION = '3.1';
+const APP_VERSION = '3.3';
 async function renderHome() {
   const evs = await allEvents();
   const rb = $('#h-resume'); rb.innerHTML = ''; const kid = localStorage.getItem('kiosk');
@@ -590,7 +596,7 @@ $('#hub-delete').onclick = async () => {
 let AC = null;
 function audioCtx() { if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)(); return AC; }
 async function decode(blob) {
-  try { const ctx = audioCtx(); const ab = await blob.arrayBuffer(); return await new Promise((res, rej) => ctx.decodeAudioData(ab, res, rej)); }
+  try { const ctx = audioCtx(); const ab = await blob.arrayBuffer(); return await withTimeout(new Promise((res, rej) => ctx.decodeAudioData(ab, res, rej)), 8000, 'sound decode timeout'); }
   catch { return null; }
 }
 
@@ -652,7 +658,8 @@ async function openVideo(blob, fallbackDur) {
 }
 
 /* Re-renders a take in real time through a canvas: effect + border + logo + music. */
-async function renderClip(blob, recDur, cfg, assets, onProg = () => {}) {
+async function renderClip(blob, recDur, cfg, assets, onProg = () => {}, onStage = () => {}, ctl = {}) {
+  onStage('Opening video…');
   const { v, dur: T } = await openVideo(blob, recDur);
   const scale = Math.min(1, cfg.outputWidth / v.videoWidth);
   const W = Math.round(v.videoWidth * scale / 2) * 2, H = Math.round(v.videoHeight * scale / 2) * 2;
@@ -672,29 +679,26 @@ async function renderClip(blob, recDur, cfg, assets, onProg = () => {}) {
   const total = fwdLen + (bw > .15 ? bw : 0); if (bw <= .15) bw = 0;
 
   // audio
-  const ctx = audioCtx(); await ctx.resume();
-  const dest = ctx.createMediaStreamDestination(); let usesAudio = false;
-  const voice = await decode(blob), music = assets.music ? await decode(assets.music.blob) : null;
+  // Videos are always silent: the only sound is the music bed the operator adds.
+  let ctx = null, dest = null, music = null;
+  if (assets.music) {
+    onStage('Preparing music…'); ctx = audioCtx(); let audioOK = ctx.state === 'running';
+    if (!audioOK) { try { await withTimeout(ctx.resume(), 1500); } catch {} audioOK = ctx.state === 'running'; }   // iOS can leave this waiting for a tap: never block on it
+    if (audioOK) { music = await decode(assets.music.blob); if (music) dest = ctx.createMediaStreamDestination(); }
+  }
+  onStage('Rendering…');
   const nodes = [];
-  const t0 = () => ctx.currentTime + .02;
   const startAudio = () => {
-    const st = t0();
-    if (voice) {
-      const s = ctx.createBufferSource(); s.buffer = voice; const gn = ctx.createGain(); gn.gain.value = music ? clamp(cfg.origVolume, 0, 1) : 1;
-      s.playbackRate.setValueAtTime(1, st);
-      if (ramp) { s.playbackRate.setValueAtTime(slow, st + sS); s.playbackRate.setValueAtTime(outro, st + sS + (eS - sS) / slow); }
-      s.connect(gn).connect(dest); s.start(st); nodes.push(s); usesAudio = true;
-    }
-    if (music) {
-      const s = ctx.createBufferSource(); s.buffer = music; s.loop = true; const gn = ctx.createGain(); const vol = clamp(cfg.musicVolume, 0, 1), f = Math.min(cfg.fade, total / 2);
-      gn.gain.setValueAtTime(f > .05 ? 0 : vol, st);
-      if (f > .05) { gn.gain.linearRampToValueAtTime(vol, st + f); gn.gain.setValueAtTime(vol, st + total - f); gn.gain.linearRampToValueAtTime(0, st + total); }
-      s.connect(gn).connect(dest); s.start(st); nodes.push(s); usesAudio = true;
-    }
+    if (!music) return;
+    const st = ctx.currentTime + .02;
+    const s = ctx.createBufferSource(); s.buffer = music; s.loop = true; const gn = ctx.createGain(); const vol = clamp(cfg.musicVolume, 0, 1), f = Math.min(cfg.fade, total / 2);
+    gn.gain.setValueAtTime(f > .05 ? 0 : vol, st);
+    if (f > .05) { gn.gain.linearRampToValueAtTime(vol, st + f); gn.gain.setValueAtTime(vol, st + total - f); gn.gain.linearRampToValueAtTime(0, st + total); }
+    s.connect(gn).connect(dest); s.start(st); nodes.push(s);
   };
 
   const out = cv.captureStream(30);
-  if (voice || music) dest.stream.getAudioTracks().forEach(t => out.addTrack(t));
+  if (music) dest.stream.getAudioTracks().forEach(t => out.addTrack(t));
   const chunks = [];
   const rec = new MediaRecorder(out, { mimeType: MIME || undefined, videoBitsPerSecond: W >= 1000 ? 8e6 : 5e6 });
   rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
@@ -705,13 +709,14 @@ async function renderClip(blob, recDur, cfg, assets, onProg = () => {}) {
     if (overlay) g.drawImage(overlay, 0, 0);
   };
   drawBase(); rec.start(500);
-  await v.play(); startAudio();
+  await withTimeout(v.play(), 6000, 'video would not play'); startAudio();
   const began = performance.now();
   const captured = []; let lastCap = -1, phase = 'fwd', tailStart = 0, tailFrames = [], tailEnd = 0;
 
   await new Promise(resolve => {
     const guard = setTimeout(() => { phase = 'done'; resolve(); }, (total + 10) * 1000);
     const tick = () => {
+      if (ctl.stop) phase = 'done';
       const el = (performance.now() - began) / 1000; onProg(clamp(el / total, 0, .99));
       if (phase === 'fwd') {
         const t = v.currentTime, r = clamp(rateAt(t), .25, 3); if (Math.abs(v.playbackRate - r) > .01) v.playbackRate = r;
@@ -738,7 +743,7 @@ async function renderClip(blob, recDur, cfg, assets, onProg = () => {}) {
   nodes.forEach(n => { try { n.stop(); } catch {} }); v.pause(); URL.revokeObjectURL(v.src);
   tailFrames.forEach(f => f.b.close && f.b.close());
   onProg(1);
-  return { blob: new Blob(chunks, { type: (rec.mimeType || MIME || 'video/mp4').split(';')[0] }), duration: total };
+  return { blob: new Blob(chunks, { type: (rec.mimeType || MIME || 'video/mp4').split(';')[0] }), duration: total, musicMissing: !!assets.music && !music };
 }
 
 /* Stitches finished clips (already branded) into one reel under the music bed. */
@@ -749,9 +754,13 @@ async function renderReel(blobs, assets, cfg, onProg = () => {}) {
   const first = vids[0].v, scale = Math.min(1, cfg.outputWidth / first.videoWidth);
   const W = Math.round(first.videoWidth * scale / 2) * 2, H = Math.round(first.videoHeight * scale / 2) * 2;
   const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const g = cv.getContext('2d');
-  const ctx = audioCtx(); await ctx.resume(); const dest = ctx.createMediaStreamDestination();
-  const out = cv.captureStream(30); dest.stream.getAudioTracks().forEach(t => out.addTrack(t));
-  const music = assets.music ? await decode(assets.music.blob) : null;
+  let ctx = null, dest = null, music = null;
+  if (assets.music) {
+    ctx = audioCtx(); let ok = ctx.state === 'running';
+    if (!ok) { try { await withTimeout(ctx.resume(), 1500); } catch {} ok = ctx.state === 'running'; }
+    if (ok) { music = await decode(assets.music.blob); if (music) dest = ctx.createMediaStreamDestination(); }
+  }
+  const out = cv.captureStream(30); if (music) dest.stream.getAudioTracks().forEach(t => out.addTrack(t));
   const chunks = [], rec = new MediaRecorder(out, { mimeType: MIME || undefined, videoBitsPerSecond: 6e6 });
   rec.ondataavailable = e => e.data && e.data.size && chunks.push(e.data); const finished = new Promise(r => rec.onstop = r);
   const nodes = []; let st = ctx.currentTime + .05;
@@ -763,14 +772,12 @@ async function renderReel(blobs, assets, cfg, onProg = () => {}) {
   g.fillStyle = '#000'; g.fillRect(0, 0, W, H); rec.start(500);
   let done = 0;
   for (const c of vids) {
-    const voice = await decode(c.blob); let vs = null;
     await c.v.play();
-    if (voice) { vs = ctx.createBufferSource(); vs.buffer = voice; const gn = ctx.createGain(); gn.gain.value = music ? .2 : 1; vs.connect(gn).connect(dest); vs.start(ctx.currentTime + .02); nodes.push(vs); }
     await new Promise(res => {
       const tick = () => { g.drawImage(c.v, 0, 0, W, H); onProg(clamp((done + c.v.currentTime) / total, 0, .99)); if (c.v.ended || c.v.currentTime >= c.dur - .04) res(); else requestAnimationFrame(tick); };
       requestAnimationFrame(tick);
     });
-    done += c.dur; c.v.pause(); try { vs && vs.stop(); } catch {}
+    done += c.dur; c.v.pause();
   }
   await sleep(150); rec.stop(); await finished; nodes.forEach(n => { try { n.stop(); } catch {} });
   onProg(1);
@@ -854,13 +861,13 @@ async function getCam(cfg) {
   ];
   let best = null, err;
   for (const v of cands) {
-    let st; try { st = await navigator.mediaDevices.getUserMedia({ video: v, audio: true }); } catch (e) { err = e; if (e && e.name === 'NotAllowedError') break; continue; }
+    let st; try { st = await navigator.mediaDevices.getUserMedia({ video: v, audio: false }); } catch (e) { err = e; if (e && e.name === 'NotAllowedError') break; continue; }
     const sh = await streamShape(st); st.__shape = sh;
     if (sh.ar && Math.abs(sh.ar - target) < 0.05) { if (best) best.getTracks().forEach(t => t.stop()); best = st; break; }
     if (!best) best = st; else st.getTracks().forEach(t => t.stop());
   }
   if (!best) {
-    for (const c of [{ video: true, audio: true }, { video: true, audio: false }]) { try { best = await navigator.mediaDevices.getUserMedia(c); best.__shape = await streamShape(best); break; } catch (e) { err = e; if (e && e.name === 'NotAllowedError') break; } }
+    for (const c of [{ video: true, audio: false }]) { try { best = await navigator.mediaDevices.getUserMedia(c); best.__shape = await streamShape(best); break; } catch (e) { err = e; if (e && e.name === 'NotAllowedError') break; } }
   }
   if (!best) throw err;
   try { const t = best.getVideoTracks()[0], caps = t.getCapabilities && t.getCapabilities(); if (caps && caps.zoom) await t.applyConstraints({ advanced: [{ zoom: caps.zoom.min }] }); } catch {}   // zoomed all the way out
@@ -908,7 +915,7 @@ function stopBooth() {
 }
 /* backup: record with the phone's normal camera app, then run it through the same effects */
 $('#b-file').onchange = async e => {
-  const f = e.target.files[0]; e.target.value = ''; if (!f || !EV) return;
+  const f = e.target.files[0]; e.target.value = ''; if (!f || !EV) return; f.__external = true;
   B.trigger = 'tap'; bphase('processing'); setProg(0);
   let dur = 10; try { const o = await openVideo(f, 10); dur = o.dur; } catch {}
   handleRecording(f, dur);
@@ -940,25 +947,38 @@ function startRecording() {
   rec.onstop = () => { const dur = (performance.now() - t0) / 1000; handleRecording(new Blob(chunks, { type: (rec.mimeType || MIME || 'video/mp4').split(';')[0] }), dur); };
   rec.start(1000);
   const bar = $('#b-recbar'), len = cfg.clipLength * 1000;
+  const stopTimer = setTimeout(() => { try { rec.stop(); } catch {} }, len + 150);          // a real timer, so a throttled screen can never leave a recording running
+  rec.addEventListener('stop', () => clearTimeout(stopTimer));
   const loop = () => { if (B.phase !== 'recording') return; const p = (performance.now() - t0) / len; bar.style.width = clamp(p, 0, 1) * 100 + '%'; if (p >= 1) { try { rec.stop(); } catch {} return; } requestAnimationFrame(loop); };
   loop();
 }
 function setProg(p) { const C = 2 * Math.PI * 90; const r = $('#p-ring'); r.style.strokeDasharray = C; r.style.strokeDashoffset = C * (1 - p); $('#p-num').textContent = Math.round(p * 100) + '%'; }
 
+const setStage = t => { $('#p-stage').textContent = t || ''; };
+
 async function handleRecording(blob, dur) {
-  bphase('processing'); setProg(0);
-  const cfg = EV.settings, clip = { id: uid(), eventId: EV.id, createdAt: Date.now(), trigger: B.trigger, duration: dur, lead: null, deliveries: [] };
-  let processed = blob, failed = false;
-  const assets = assetsFor(cfg); const needs = cfg.effect !== 'none' || assets.border || assets.logo || assets.music || cfg.facing === 'user';
+  bphase('processing'); setProg(0); setStage('Starting…'); $('#p-skip').classList.add('hidden');
+  const cfg = EV.settings, clip = { id: uid(), eventId: EV.id, createdAt: Date.now(), trigger: B.trigger, duration: dur, lead: null, deliveries: [], note: '' };
+  let processed = blob, failed = false; const t0 = performance.now();
+  const assets = assetsFor(cfg); const needs = cfg.effect !== 'none' || assets.border || assets.logo || assets.music || cfg.facing === 'user' || blob.__external;
   if (needs) {
-    try { const r = await renderClip(blob, dur, cfg, assets, setProg); if (r.blob.size > 1000) { processed = r.blob; clip.duration = r.duration; } else failed = true; }
-    catch (e) { console.warn('processing failed, keeping raw take', e); failed = true; }
+    const ctl = { stop: false };
+    const skip = new Promise((_, rej) => { ctl.skip = () => { ctl.stop = true; rej(new Error('skipped')); }; });
+    const skipTimer = setTimeout(() => $('#p-skip').classList.remove('hidden'), (dur + 8) * 1000);
+    $('#p-skip').onclick = () => ctl.skip();
+    try {
+      const r = await Promise.race([renderClip(blob, dur, cfg, assets, setProg, setStage, ctl), skip, new Promise((_, rej) => setTimeout(() => rej(new Error('took too long')), (dur * 1.8 + 30) * 1000))]);
+      if (r.blob.size > 1000) { processed = r.blob; clip.duration = r.duration; clip.note = 'Finished in ' + ((performance.now() - t0) / 1000).toFixed(0) + 's' + (r.musicMissing ? ' · music could not play, saved without sound' : ''); }
+      else { failed = true; clip.note = 'Saved without effects (empty result)'; }
+    } catch (e) { ctl.stop = true; failed = true; clip.note = 'Saved without effects (' + (e && e.message || 'error') + ')'; console.warn('processing failed, keeping raw take', e); }
+    clearTimeout(skipTimer);
   }
+  setStage('Saving…');
   clip.processed = processed; clip.type = processed.type || blob.type;
   clip.original = (cfg.keepOriginals || failed) && processed !== blob ? blob : null;
-  try { clip.thumb = await makeThumb(processed); } catch { clip.thumb = null; }
+  try { clip.thumb = await withTimeout(makeThumb(processed), 6000); } catch { clip.thumb = null; }
   try { await DB.put('clips', clip); EV.clipCount++; await DB.put('events', EV); }
-  catch (e) { toast('Storage is full — export and delete old clips'); }
+  catch (e) { toast('Storage is full — export and delete old videos'); }
   openReview(clip);
 }
 
@@ -981,7 +1001,7 @@ let CLIP = null, CLIP_URL = null;
 const clipFile = (clip, ev = EV, n = '') => new File([clip.processed], `${ev ? baseName(ev) : 'party-machine'}-${clip.id.slice(0, 6)}${n}.${extOf(clip.type)}`, { type: clip.type });
 function openReview(clip) {
   CLIP = clip; if (CLIP_URL) URL.revokeObjectURL(CLIP_URL); CLIP_URL = URL.createObjectURL(clip.processed);
-  const v = $('#r-video'); v.src = CLIP_URL; v.play().catch(() => {});
+  const v = $('#r-video'); v.muted = true; v.src = CLIP_URL; v.play().catch(() => {}); $('#r-note').textContent = clip.note || '';
   const cfg = EV.settings; $('#r-lead').classList.toggle('hidden', !cfg.leadOn);
   $('#r-leadtitle').textContent = cfg.leadRequired ? 'Where should we send it?' : 'Want it sent to you too? (optional)';
   ['#r-email', '#r-wa'].forEach(s => $(s).value = ''); $('#r-err').textContent = ''; $('#r-savelead').textContent = 'Save my details'; $('#r-savelead').disabled = false; CLIP._leadSaved = false;
@@ -989,7 +1009,8 @@ function openReview(clip) {
 }
 async function logDelivery(kind) { if (!CLIP || CLIP.deliveries.some(d => d.kind === kind)) return; CLIP.deliveries.push({ kind, at: Date.now() }); await DB.put('clips', stripTmp(CLIP)); }
 const stripTmp = c => { const { _leadSaved, ...rest } = c; return rest; };
-$('#r-share').onclick = async () => { if (await shareFiles([clipFile(CLIP)], 'Your Party Machines video')) logDelivery('share'); else { download(clipFile(CLIP), clipFile(CLIP).name); logDelivery('download'); } };
+const shareClip = async () => { if (await shareFiles([clipFile(CLIP)], 'Your Party Machines video')) logDelivery('share'); else { download(clipFile(CLIP), clipFile(CLIP).name); logDelivery('download'); } };
+$('#r-share').onclick = shareClip; $('#r-share-top').onclick = shareClip;
 $('#r-download').onclick = () => { const f = clipFile(CLIP); download(f, f.name); logDelivery('download'); };
 $('#r-savelead').onclick = async () => {
   const email = $('#r-email').value.trim(), wa = $('#r-wa').value.trim();
