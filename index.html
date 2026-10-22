@@ -81,6 +81,7 @@ h2{font-size:13px;margin:10px 0 0;color:var(--mut);text-transform:uppercase;lett
 #cam.mirror{transform:scaleX(-1)}
 #boothBorder{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none}
 .bback{position:absolute;left:14px;top:calc(env(safe-area-inset-top) + 12px);z-index:5;background:rgba(5,11,31,.7);backdrop-filter:blur(6px)}
+#b-info{position:absolute;right:12px;top:calc(env(safe-area-inset-top) + 16px);z-index:4;font:600 11px ui-monospace,Menlo,monospace;color:rgba(255,255,255,.75);background:rgba(5,11,31,.6);padding:4px 8px;border-radius:8px;pointer-events:none}
 #b-cdlabel{position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 70px);text-align:center;font-weight:800;font-size:18px;text-shadow:0 2px 12px rgba(0,0,0,.8)}
 .layer{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;
   padding:0 8% calc(env(safe-area-inset-bottom) + 40px)}
@@ -161,6 +162,7 @@ details.past .list-item{margin-top:8px;background:var(--panel2)}
 <!-- ===== HOME ===== -->
 <section id="s-home" class="screen active"><div class="wrap home">
   <div class="welcome"><img class="mark" src="icon-192.png" alt=""><h1>Welcome</h1><div class="sub">Party Machines Booth</div></div>
+  <div id="h-resume"></div>
   <button class="btn primary big" id="h-new">Start new event</button>
   <button class="btn ghost" id="h-defaults">Default settings &amp; PIN</button>
   <div class="spacer"></div>
@@ -170,6 +172,7 @@ details.past .list-item{margin-top:8px;background:var(--panel2)}
   </details>
   <div class="sub" id="h-storage"></div>
   <div class="sub" id="h-install"></div>
+  <div class="sub" style="display:flex;gap:10px;align-items:center;justify-content:space-between"><span id="h-ver"></span><button class="back" id="h-update" style="padding:6px 12px;font-size:13px">Update app</button></div>
 </div></section>
 
 <!-- ===== SETTINGS FORM (new event / event settings / defaults) ===== -->
@@ -216,6 +219,7 @@ details.past .list-item{margin-top:8px;background:var(--panel2)}
 <section id="s-booth" class="screen booth">
   <div id="frame"><video id="cam" playsinline muted autoplay></video><img id="boothBorder" alt="" class="hidden"></div>
   <button class="back bback hidden" id="b-back">‹ Back</button>
+  <div id="b-info"></div>
   <div id="b-wait" class="layer">
     <div class="rings"><i></i><i></i></div>
     <div class="hero" id="b-hero">SPIN THE RIG<small>or tap to start</small></div>
@@ -497,8 +501,19 @@ function renderPinCard() {
 
 /* ---------------- home ---------------- */
 const allEvents = async () => (await DB.all('events')).sort((a, b) => b.createdAt - a.createdAt);
+const APP_VERSION = '3.1';
 async function renderHome() {
   const evs = await allEvents();
+  const rb = $('#h-resume'); rb.innerHTML = ''; const kid = localStorage.getItem('kiosk');
+  if (kid && kid !== '1') {
+    const ke = evs.find(e => e.id === kid);
+    if (ke) {
+      rb.innerHTML = `<div class="card live" style="margin-bottom:2px"><div><b>Booth still open</b><div class="sub">${esc(ke.name)}</div></div><button class="btn primary" id="h-resume-go">Resume booth</button><button class="btn ghost" id="h-resume-no">Not now</button></div>`;
+      $('#h-resume-go').onclick = () => enterBooth(kid);
+      $('#h-resume-no').onclick = () => { localStorage.removeItem('kiosk'); renderHome(); };
+    } else localStorage.removeItem('kiosk');
+  }
+  $('#h-ver').textContent = 'Version ' + APP_VERSION;
   $('#h-count').textContent = evs.length ? '(' + evs.length + ')' : '';
   const box = $('#h-list'); box.innerHTML = evs.length ? '' : '<div class="sub" style="padding:4px 2px 0">No events yet — start your first one above.</div>';
   evs.forEach(e => {
@@ -515,6 +530,10 @@ async function renderHome() {
   $('#h-install').textContent = standalone ? 'For a locked kiosk, triple-click the side button to start Guided Access.' : 'Tip: in Safari tap Share → Add to Home Screen so it runs full-screen and keeps your videos safe.';
 }
 $('#h-new').onclick = () => openNewEvent(null);
+$('#h-update').onclick = async () => {
+  try { for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister(); for (const k of await caches.keys()) await caches.delete(k); } catch {}
+  location.reload();
+};
 $('#h-defaults').onclick = () => openForm({
   title: 'Default settings', back: showHome, saveLabel: 'Save defaults', showPin: true, initial: cleanSettings(S),
   top: '<div class="sub">New events start with these settings. You can change everything again for each event.</div>',
@@ -817,18 +836,35 @@ function camError(e) {
   if (n === 'NotReadableError' || n === 'AbortError') return 'The camera is busy. Close other apps using it (FaceTime, Camera, Zoom) and tap START BOOTH again.';
   return 'The camera could not start (' + (n || 'unknown error') + '). Try reopening the app, or use the button below to record with the normal camera.';
 }
+async function streamShape(stream) {
+  const v = document.createElement('video'); v.muted = true; v.playsInline = true; v.srcObject = stream;
+  try { await v.play().catch(() => {}); if (!v.videoWidth) await once(v, 'loadedmetadata', 3000); } catch {}
+  const w = v.videoWidth, h = v.videoHeight; v.srcObject = null; return { w, h, ar: h ? w / h : 0 };
+}
+/* iPhones crop the picture ('zoom') when you ask for 60 fps or a 16:9 size, so ask for the shape we want, check what
+   we really got, and keep trying other requests until the shape matches. */
 async function getCam(cfg) {
-  const dims = cfg.framing === 'tall' ? { width: { ideal: 1080 }, height: { ideal: 1920 } } : { width: { ideal: 1080 }, height: { ideal: 1440 } };
-  const tries = [
-    { video: { facingMode: cfg.facing, ...dims, frameRate: { ideal: 60 } }, audio: true },
-    { video: { facingMode: cfg.facing, ...dims }, audio: true },
-    { video: { facingMode: cfg.facing }, audio: true },
-    { video: true, audio: true },
-    { video: true, audio: false },
+  const target = cfg.framing === 'tall' ? 9 / 16 : 3 / 4, f = { facingMode: cfg.facing }, tall = Math.round(1080 / target);
+  const cands = [
+    { ...f, aspectRatio: { exact: target }, width: { ideal: 1080 } },
+    { ...f, width: { ideal: 1080 }, height: { ideal: tall }, aspectRatio: { ideal: target } },
+    { ...f, width: { ideal: tall }, height: { ideal: 1080 } },
+    { ...f, aspectRatio: { ideal: target } },
+    { ...f },
   ];
-  let err;
-  for (const c of tries) { try { return await navigator.mediaDevices.getUserMedia(c); } catch (e) { err = e; if (e && e.name === 'NotAllowedError') break; } }
-  throw err;
+  let best = null, err;
+  for (const v of cands) {
+    let st; try { st = await navigator.mediaDevices.getUserMedia({ video: v, audio: true }); } catch (e) { err = e; if (e && e.name === 'NotAllowedError') break; continue; }
+    const sh = await streamShape(st); st.__shape = sh;
+    if (sh.ar && Math.abs(sh.ar - target) < 0.05) { if (best) best.getTracks().forEach(t => t.stop()); best = st; break; }
+    if (!best) best = st; else st.getTracks().forEach(t => t.stop());
+  }
+  if (!best) {
+    for (const c of [{ video: true, audio: true }, { video: true, audio: false }]) { try { best = await navigator.mediaDevices.getUserMedia(c); best.__shape = await streamShape(best); break; } catch (e) { err = e; if (e && e.name === 'NotAllowedError') break; } }
+  }
+  if (!best) throw err;
+  try { const t = best.getVideoTracks()[0], caps = t.getCapabilities && t.getCapabilities(); if (caps && caps.zoom) await t.applyConstraints({ advanced: [{ zoom: caps.zoom.min }] }); } catch {}   // zoomed all the way out
+  return best;
 }
 async function startBooth() {
   const cfg = EV.settings;
@@ -841,6 +877,7 @@ async function startBooth() {
   const cam = $('#cam'); cam.srcObject = B.stream; cam.classList.toggle('mirror', cfg.facing === 'user'); try { await cam.play(); } catch {}
   if (!cam.videoWidth) { try { await once(cam, 'loadedmetadata', 4000); } catch {} }
   fitFrame();
+  const sh = B.stream.__shape || { w: cam.videoWidth, h: cam.videoHeight }; $('#b-info').textContent = `${cfg.facing === 'user' ? 'Front' : 'Back'} camera · ${sh.w}×${sh.h}`;
   const bi = $('#boothBorder'), bd = assetsFor(cfg).border; bi.style.objectFit = { fill: 'fill', contain: 'contain', cover: 'cover' }[cfg.overlayFit] || 'cover'; if (bd) { bi.src = URL.createObjectURL(bd.blob); bi.classList.remove('hidden'); } else bi.classList.add('hidden');
   $('#b-hero').innerHTML = 'READY<small>tap to start</small>'; $('#b-meter').classList.add('hidden');
   motionAsk.then(ok => {
@@ -1029,11 +1066,16 @@ $('#m-del').onclick = async () => { if (!confirm('Delete this clip?')) return; a
 /* ---------------- boot ---------------- */
 (async function init() {
   await DB.open(); await loadSettings(); await loadAssets();
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(r => r.update().catch(() => {})).catch(() => {});
+    if (navigator.serviceWorker.controller) navigator.serviceWorker.addEventListener('controllerchange', () => { if (!sessionStorage.getItem('swr')) { sessionStorage.setItem('swr', '1'); if (B.phase === 'idle') location.reload(); } });
+  }
   document.addEventListener('visibilitychange', async () => { if (document.visibilityState === 'visible' && B.phase === 'waiting') { try { B.wake = await navigator.wakeLock.request('screen'); } catch {} } });
   const k = localStorage.getItem('kiosk');
-  if (k && k !== '1' && await DB.get('events', k)) { enterBooth(k); return; }      // a restart mid-event returns to the locked booth
-  localStorage.removeItem('kiosk');
+  // With a PIN set, a restart mid-event returns to the locked booth. Without a PIN there is nothing to lock,
+  // so the app opens on Home with a 'Resume booth' card instead of trapping you.
+  if (k && k !== '1' && S.pinHash && await DB.get('events', k)) { enterBooth(k); return; }
+  if (k === '1') localStorage.removeItem('kiosk');
   if (S.pinHash) { await pinPrompt('Operator PIN', 'Enter your PIN to open the app.', verifyPin, true); }
   showHome();
 })();

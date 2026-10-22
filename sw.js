@@ -1,5 +1,5 @@
 /* Party Machines Booth — offline shell. Bump VERSION to force an update. */
-const VERSION = 'pmb-v3';
+const VERSION = 'pmb-v31';
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icon-180.png', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {
@@ -17,7 +17,7 @@ self.addEventListener('fetch', e => {
   if (url.origin !== location.origin) return;
   // Network first so a new deploy shows up; fall back to cache when offline.
   e.respondWith(
-    fetch(e.request).then(res => {
+    fetch(e.request, { cache: 'no-store' }).then(res => {
       const copy = res.clone();
       caches.open(VERSION).then(c => c.put(e.request, copy));
       return res;
