@@ -84,6 +84,9 @@ h2{font-size:13px;margin:10px 0 0;color:var(--mut);text-transform:uppercase;lett
 #cam.mirror{transform:scaleX(-1)}
 #boothBorder{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none}
 .bback{position:absolute;left:14px;top:calc(env(safe-area-inset-top) + 12px);z-index:5;background:rgba(5,11,31,.7);backdrop-filter:blur(6px)}
+#b-warn{position:absolute;left:12px;top:calc(env(safe-area-inset-top) + 16px);z-index:5;max-width:62%;font:700 12px -apple-system,system-ui,sans-serif;color:#1a1300;background:#ffd21f;padding:6px 10px;border-radius:10px;display:none;pointer-events:none}
+#b-warn.bad{background:#ff3b3b;color:#fff}
+#b-warn.on{display:block}
 #b-info{position:absolute;right:12px;top:calc(env(safe-area-inset-top) + 16px);z-index:4;font:600 11px ui-monospace,Menlo,monospace;color:rgba(255,255,255,.75);background:rgba(5,11,31,.6);padding:4px 8px;border-radius:8px;pointer-events:none}
 #b-cdlabel{position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 70px);text-align:center;font-weight:800;font-size:18px;text-shadow:0 2px 12px rgba(0,0,0,.8)}
 .layer{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;
@@ -326,6 +329,7 @@ details.past .list-item{margin-top:8px;background:var(--panel2)}
   <div id="frame"><video id="cam" playsinline muted autoplay></video><img id="boothBorder" alt="" class="hidden"><div id="b-caption" class="hidden"></div></div>
   <button class="back bback hidden" id="b-back">‹ Back</button>
   <div id="b-info"></div>
+  <div id="b-warn"></div>
   <div id="b-wait" class="layer">
     <div class="rings"><i></i><i></i></div>
     <div class="hero" id="b-hero">SPIN THE RIG<small>or tap to start</small></div>
@@ -801,7 +805,7 @@ function renderPinCard() {
 
 /* ---------------- home ---------------- */
 const allEvents = async () => (await DB.all('events')).sort((a, b) => b.createdAt - a.createdAt);
-const APP_VERSION = '4.3';
+const APP_VERSION = '4.4';
 async function renderHome() {
   const evs = await allEvents();
   const rb = $('#h-resume'); rb.innerHTML = ''; const kid = localStorage.getItem('kiosk');
@@ -1209,6 +1213,36 @@ const bphase = p => {
   $('#b-back').classList.toggle('hidden', !(EV && EV.settings.showBack && (p === 'waiting' || p === 'resume')));
 };
 function bstatus(msg) { const el = $('#b-status'); el.textContent = msg || ''; el.classList.toggle('hidden', !msg); }
+/* ---------------- storage + battery warnings (while the booth is open) ---------------- */
+const HEALTH = (() => {
+  let timer = null, last = '';
+  const LOW_STORE = 2e9, CRIT_STORE = 5e8;
+  async function check() {
+    const msgs = []; let level = '';
+    try {
+      const e = await navigator.storage.estimate(), free = (e.quota || 0) - (e.usage || 0);
+      if (e.quota && free < CRIT_STORE) { msgs.push('Storage almost full (' + fmtBytes(free) + ' left)'); level = 'bad'; }
+      else if (e.quota && free < LOW_STORE) { msgs.push('Storage low (' + fmtBytes(free) + ' left)'); level = level || 'warn'; }
+    } catch {}
+    try {
+      if (navigator.getBattery) {                                         // not available on iPhone; works on Android
+        const b = await navigator.getBattery(), pct = Math.round(b.level * 100);
+        if (!b.charging && pct < 15) { msgs.push('Battery ' + pct + '% — plug in now'); level = 'bad'; }
+        else if (!b.charging && pct < 30) { msgs.push('Battery ' + pct + '% — plug in'); level = level || 'warn'; }
+      }
+    } catch {}
+    const el = $('#b-warn'); if (!el) return;
+    el.textContent = msgs.join(' · '); el.className = msgs.length ? 'on ' + level : '';
+    const sig = msgs.join('|'); if (msgs.length && sig !== last) { toast('⚠ ' + msgs.join(' · '), 5000); if (navigator.vibrate) navigator.vibrate([80, 60, 80]); }
+    last = sig;
+  }
+  return {
+    start() { this.stop(); last = ''; check(); timer = setInterval(check, 30000); },
+    stop() { clearInterval(timer); timer = null; const el = $('#b-warn'); if (el) el.className = ''; },
+    check,
+  };
+})();
+
 async function enterBooth(id) {
   const ev = await DB.get('events', id); if (!ev) { toast('Event not found'); return showHome(); }
   EV = ev; EV.settings = cleanSettings(EV.settings);
@@ -1266,7 +1300,7 @@ async function startBooth() {
   const cfg = EV.settings;
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { bstatus('This browser cannot open the camera. Open the link in Safari (not inside WhatsApp) and add it to your Home Screen.'); return; }
   if (!window.MediaRecorder) { bstatus('This iPhone is too old to record inside the app (needs iOS 14.5 or newer). Use the button below to record with the normal camera.'); return; }
-  bstatus('Starting camera…');
+  bstatus('Starting camera…'); HEALTH.start();
   try { audioCtx().resume(); } catch {}                                       // unlock sound inside the tap, never wait for it
   const motionAsk = cfg.motionOn ? Motion.permission() : Promise.resolve(false); // also asked inside the tap
   try { B.stream = await getCam(cfg); } catch (e) { bstatus(camError(e)); return; }
@@ -1306,7 +1340,7 @@ function meterLoop() {
 function stopBooth() {
   cancelAnimationFrame(B.raf); clearTimeout(B.cdTimer); Motion.disarm();
   if (B.stream) B.stream.getTracks().forEach(t => t.stop()); B.stream = null; $('#cam').srcObject = null;
-  KeepAwake.stop(); clearInterval(IDLE.timer); hideIdle(); bphase('idle');
+  KeepAwake.stop(); clearInterval(IDLE.timer); hideIdle(); bphase('idle'); HEALTH.stop();
 }
 /* backup: record with the phone's normal camera app, then run it through the same effects */
 $('#b-file').onchange = async e => {
