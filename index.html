@@ -195,6 +195,23 @@ details.past .list-item{margin-top:8px;background:var(--panel2)}
 .hbars i{display:block;width:100%;background:var(--blue);border-radius:6px 6px 0 0;min-height:3px}
 .hbars div.top i{background:var(--accent)}
 #b-caption{position:absolute;left:0;right:0;text-align:center;font-weight:800;pointer-events:none;z-index:2;padding:0 4%;text-shadow:0 2px 10px rgba(0,0,0,.7);line-height:1.1}
+
+#idle{position:absolute;inset:0;z-index:3;background:#000;overflow:hidden}
+#idle-pv{position:fixed;inset:0;z-index:70;background:#000;overflow:hidden}
+.idleitem{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .7s ease}
+.idleitem.in{opacity:1}
+#hot{z-index:6}
+.rdrow{display:flex;gap:12px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px;margin-top:10px}
+.rdrow .dot{width:14px;height:14px;border-radius:50%;background:var(--mut);flex:none}
+.rdrow.ok .dot{background:var(--ok)}.rdrow.warn .dot{background:var(--accent)}.rdrow.bad .dot{background:var(--red)}
+.rdrow.run .dot{background:var(--blue);animation:blink 1s infinite}
+.rdrow .grow{flex:1;min-width:0}.rdrow .sub{font-size:13px;margin-top:2px;line-height:1.4}
+.rdrow button{width:auto;min-height:40px;padding:0 14px}
+.idlelist{display:flex;flex-direction:column;gap:8px;margin:6px 0 10px}
+.idleitem2{display:flex;gap:10px;align-items:center;background:var(--panel2);border-radius:14px;padding:8px}
+.idleitem2 .th{width:54px;height:54px;border-radius:10px;overflow:hidden;background:#000;flex:none}
+.idleitem2 .th img,.idleitem2 .th video{width:100%;height:100%;object-fit:cover}
+.idleitem2 .grow{flex:1;min-width:0}.idleitem2 b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:14px}
 @media (prefers-reduced-motion:reduce){.rings i,.recpill i{animation:none}}
 </style>
 </head>
@@ -234,6 +251,7 @@ details.past .list-item{margin-top:8px;background:var(--panel2)}
   <button class="btn primary big" id="hub-record">● Start recording</button>
   <button class="btn big" id="hub-videos">Videos <span id="hub-count" class="sub"></span></button>
   <button class="btn big" id="hub-summary">End-of-event summary</button>
+  <button class="btn big" id="hub-ready">Ready check</button>
   <div class="card">
     <h2 style="margin:0">This event</h2>
     <button class="btn" id="hub-settings">Event settings</button>
@@ -241,6 +259,16 @@ details.past .list-item{margin-top:8px;background:var(--panel2)}
     <button class="btn" id="hub-rename">Rename</button>
     <button class="btn danger" id="hub-delete">Delete event</button>
   </div>
+</div></section>
+
+<!-- ===== READY CHECK ===== -->
+<section id="s-ready" class="screen"><div class="wrap">
+  <button class="back" id="rd-back">‹ Event</button>
+  <h1>Ready check</h1>
+  <div class="sub">Run this before the guests arrive. It tests the parts the booth depends on.</div>
+  <div id="rd-list"></div>
+  <button class="btn primary big" id="rd-run">Run all checks</button>
+  <button class="btn" id="rd-start">● Start recording</button>
 </div></section>
 
 <!-- ===== SUMMARY ===== -->
@@ -305,6 +333,7 @@ details.past .list-item{margin-top:8px;background:var(--panel2)}
     <label class="tapbtn alt" for="b-file">Camera not working? Record with the phone’s camera</label>
     <input type="file" id="b-file" accept="video/*" capture="user" hidden>
   </div>
+  <div id="idle" class="hidden"></div>
   <div id="flash"></div>
   <div id="hot"></div>
 </section>
@@ -337,6 +366,7 @@ details.past .list-item{margin-top:8px;background:var(--panel2)}
   <button class="back" id="pin-cancel">Cancel</button></div>
 <div class="modal" id="modal"><video class="player" id="m-video" playsinline loop controls></video>
   <div class="row" style="width:100%;max-width:420px"><button class="btn" id="m-share">Share</button><button class="btn danger" id="m-del">Delete</button><button class="btn" id="m-close">Close</button></div></div>
+<div id="idle-pv" class="hidden"></div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -409,7 +439,8 @@ function buildPieces(T, segs) {                 // source seconds -> [{s, e, rat
 }
 const outLen = ps => ps.reduce((a, q) => a + (q.e - q.s) / q.rate, 0);
 const DEFAULTS = {
-  clipLength: 12, countdown: 3, facing: 'user', framing: 'wide', mirrorFront: true, outputWidth: 720, keepOriginals: false,
+  clipLength: 12, countdown: 3, facing: 'user', framing: 'wide', mirrorFront: true, smooth60: true, outputWidth: 720, keepOriginals: false,
+  idleOn: false, idleIds: [], idleAfter: 20, idleSlide: 6,
   motionOn: true, sensitivity: 0.5, motionDelay: 2, cooldown: 6, showBack: true, autoReturn: 20,
   segments: [{ start: .35, end: .7, speed: .4 }, { start: .7, end: 1, speed: 1.4 }], boomerang: false, boomerangSec: 1.5,
   overlayFit: 'fill',
@@ -496,6 +527,7 @@ const SETTINGS_UI = [
   ['countdown', 'range', 'Countdown when you tap to start', { min: 0, max: 10, step: 1, fmt: v => v === 0 ? 'None' : v + ' s' }],
   ['facing', 'select', 'Which camera records', { opts: [['user', 'Front camera (selfie)'], ['environment', 'Back camera']] }],
   ['framing', 'select', 'Picture shape', { opts: [['wide', 'Wide — full view, no zoom (3:4)'], ['tall', 'Tall — 9:16 (the phone crops the sides)']], hint: 'Wide shows everything the camera sees, so nothing looks zoomed in.' }],
+  ['smooth60', 'check', 'Smooth 60 frames per second', { hint: 'Smoother videos and better slow-motion. If the phone cannot do 60 at the full view, it uses the best it can.' }],
   ['mirrorFront', 'check', 'Mirror the front camera', { hint: 'Looks like a mirror, the way people expect a selfie to look. Turn off if text must read the right way round.', show: 'facing=user' }],
   ['outputWidth', 'select', 'Video quality', { num: true, opts: [[720, 'HD 720 (fast, reliable)'], [1080, 'Full HD 1080 (slower)']], hint: 'Videos are finished on the phone in real time — HD 720 is safest for busy events.' }],
   { h: 'Speed, slow-mo & fast-forward', open: true, desc: 'Choose where the video slows down or speeds up. Anywhere you don’t add a section plays at normal speed.' },
@@ -508,6 +540,11 @@ const SETTINGS_UI = [
   ['motionDelay', 'range', 'Start recording after movement', { min: 0, max: 10, step: 1, fmt: v => v === 0 ? 'Immediately' : v + ' s', show: 'motionOn' }],
   ['cooldown', 'range', 'Wait between videos', { min: 2, max: 20, step: 1, fmt: v => v + ' s', show: 'motionOn' }],
   ['@mt', 'motiontest', 'Test movement', { show: 'motionOn' }],
+  { h: 'Waiting screen', open: false, desc: 'When nobody is using the booth, play your photos or videos. As soon as the phone feels movement, or someone taps, it switches to the camera.' },
+  ['idleOn', 'check', 'Show a waiting screen'],
+  ['@idle', 'idlelist', 'Photos and videos to play', { show: 'idleOn' }],
+  ['idleAfter', 'select', 'Show it when nobody has touched the booth for', { num: true, opts: [[5, '5 seconds'], [10, '10 seconds'], [20, '20 seconds'], [30, '30 seconds'], [60, '1 minute']], show: 'idleOn' }],
+  ['idleSlide', 'range', 'Seconds each photo is shown', { min: 3, max: 20, step: 1, fmt: v => v + ' s', show: 'idleOn' }],
   { h: 'Photo on top of the video', open: false, desc: 'A transparent PNG (a frame or design) laid over every video, exactly the size of the video.' },
   ['borderId', 'asset', 'Transparent photo (PNG)', { kind: 'border', accept: 'image/*' }],
   ['@overlayinfo', 'overlayinfo'],
@@ -563,6 +600,12 @@ function renderFormBody() {
     else if (type === 'speed') html += `<div class="set" id="sp-box"><div class="sub" id="sp-sum"></div><div class="tl" id="sp-tl"></div><div class="tlticks" id="sp-ticks"></div><div id="sp-list"></div>
       <div class="row" style="margin-top:10px"><button type="button" class="btn ghost" data-add="slow" style="min-height:46px">+ Slow-mo section</button><button type="button" class="btn ghost" data-add="fast" style="min-height:46px">+ Fast-forward section</button></div></div>`;
     else if (type === 'overlayinfo') html += `<div class="set" id="ov-box"></div>`;
+    else if (type === 'idlelist') {
+      const items = (D.idleIds || []).map(id => ASSETS[id]).filter(Boolean);
+      html += `<div class="set"${show}><div class="lab"><span>${label}</span></div><div class="idlelist">${items.map(a => `<div class="idleitem2"><div class="th" data-th="${a.id}"></div><div class="grow"><b>${esc(a.name)}</b><span class="sub">${(a.blob.type || '').startsWith('video') ? 'Video' : 'Photo'}</span></div><button type="button" class="back segdel" data-rm="${a.id}">Remove</button></div>`).join('') || '<div class="sub">Nothing added yet.</div>'}</div>
+        <label class="btn ghost" style="min-height:44px">Add photos or videos…<input type="file" accept="image/*,video/*" multiple data-idleupload hidden></label>
+        <button type="button" class="btn ghost" id="idle-prev" style="min-height:44px;margin-top:8px">Preview the waiting screen</button></div>`;
+    }
     else if (type === 'motiontest') html += `<div class="set"${show}><div class="lab"><span>Test the movement sensor</span><output id="mt-state"></output></div><div class="meter" style="width:100%"><i id="mt-bar"></i></div><button class="btn ghost" id="mt-btn" style="min-height:44px">Start test</button><div class="hint">Put the phone on the booth, tap Start test, then run the booth. When the bar fills, recording would start. Change Sensitivity until it only fills when the booth moves.</div></div>`;
     else if (type === 'asset') {
       const list = Object.values(ASSETS).filter(a => a.kind === o.kind).sort((a, b) => a.name.localeCompare(b.name));
@@ -585,6 +628,13 @@ function renderFormBody() {
   $$('#f-body .preset').forEach(b => b.onclick = () => { const p = SPEED_PRESETS[+b.dataset.preset]; Object.assign(D, JSON.parse(JSON.stringify(p[2]))); FORM.spSig = null; syncFormUI(); toast('Style: ' + p[0]); });
   $$('#f-body [data-add]').forEach(b => b.onclick = () => addSegment(b.dataset.add));
   const mb = $('#mt-btn'); if (mb) mb.onclick = startMotionTest;
+  $$('#f-body [data-th]').forEach(th => { const a = ASSETS[th.dataset.th]; if (!a) return; const isV = (a.blob.type || '').startsWith('video'); const el = document.createElement(isV ? 'video' : 'img'); el.src = URL.createObjectURL(a.blob); if (isV) { el.muted = true; el.playsInline = true; el.preload = 'metadata'; } th.appendChild(el); });
+  $$('#f-body [data-rm]').forEach(b => b.onclick = () => { D.idleIds = (D.idleIds || []).filter(x => x !== b.dataset.rm); renderFormBody(); });
+  const iu = $('#f-body [data-idleupload]'); if (iu) iu.addEventListener('change', async () => {
+    for (const f of iu.files) { const a = { id: uid(), kind: 'idle', name: f.name, blob: f }; await DB.put('assets', a); ASSETS[a.id] = a; (D.idleIds = D.idleIds || []).push(a.id); }
+    renderFormBody(); toast('Added to the waiting screen');
+  });
+  const ip = $('#idle-prev'); if (ip) ip.onclick = () => { const pv = $('#idle-pv'), pl = playIdle(pv, D); if (!pl) { toast('Add a photo or a video first'); return; } pv.classList.remove('hidden'); toast('Tap the screen to close the preview', 2500); pv.onclick = () => { pl.stop(); pv.classList.add('hidden'); }; };
   $$('#f-body [data-upload]').forEach(el => el.addEventListener('change', async () => {
     const f = el.files[0]; if (!f) return;
     const a = { id: uid(), kind: el.dataset.kind, name: f.name, blob: f }; await DB.put('assets', a); ASSETS[a.id] = a;
@@ -698,7 +748,7 @@ function renderPinCard() {
 
 /* ---------------- home ---------------- */
 const allEvents = async () => (await DB.all('events')).sort((a, b) => b.createdAt - a.createdAt);
-const APP_VERSION = '4.0';
+const APP_VERSION = '4.1';
 async function renderHome() {
   const evs = await allEvents();
   const rb = $('#h-resume'); rb.innerHTML = ''; const kid = localStorage.getItem('kiosk');
@@ -894,10 +944,11 @@ async function renderClip(blob, recDur, cfg, assets, onProg = () => {}, onStage 
     s.connect(gn).connect(dest); s.start(st); nodes.push(s);
   };
 
-  const out = cv.captureStream(30);
+  const outFps = clamp(Math.round(cfg.__fps || 30), 24, 60);
+  const out = cv.captureStream(outFps);
   if (music) dest.stream.getAudioTracks().forEach(t => out.addTrack(t));
   const chunks = [];
-  const rec = new MediaRecorder(out, { mimeType: MIME || undefined, videoBitsPerSecond: W >= 1000 ? 8e6 : 5e6 });
+  const rec = new MediaRecorder(out, { mimeType: MIME || undefined, videoBitsPerSecond: clamp(Math.round(W * H * outFps * 0.1), 4e6, 12e6) });
   rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
   const finished = new Promise(res => rec.onstop = res);
 
@@ -981,10 +1032,12 @@ async function renderReel(blobs, assets, cfg, onProg = () => {}) {
   return { blob: new Blob(chunks, { type: (rec.mimeType || MIME || 'video/mp4').split(';')[0] }), duration: total };
 }
 
-async function makeThumb(blob) {
-  const { v } = await openVideo(blob, 1); const w = 270, h = Math.round(w * v.videoHeight / v.videoWidth);
+async function makeThumb(blob, at = 3) {
+  const { v, dur } = await openVideo(blob, 0), t = dur > at + .3 ? at : Math.max(0, dur * .5);
+  try { if (t > 0) { v.currentTime = t; await withTimeout(once(v, 'seeked', 4000), 4500); } } catch {}
+  const w = 270, h = Math.round(w * v.videoHeight / v.videoWidth);
   const cv = document.createElement('canvas'); cv.width = w; cv.height = h; cv.getContext('2d').drawImage(v, 0, 0, w, h);
-  URL.revokeObjectURL(v.src); return new Promise(r => cv.toBlob(r, 'image/jpeg', .7));
+  URL.revokeObjectURL(v.src); return new Promise(r => cv.toBlob(r, 'image/jpeg', .72));
 }
 
 /* ---------------- zip (store only — video is already compressed) ---------------- */
@@ -1014,6 +1067,65 @@ async function shareFiles(files, title) {
   return false;
 }
 const baseName = ev => (new Date(ev.createdAt).toISOString().slice(0, 10) + '_' + ev.name).replace(/[^\w\-]+/g, '-');
+
+/* ---------------- keep the screen awake ---------------- */
+const KeepAwake = {
+  lock: null, vid: null, url: null, method: '',
+  async makeClip() {
+    if (this.url) return this.url;
+    const c = document.createElement('canvas'); c.width = 64; c.height = 64; const g = c.getContext('2d'), st = c.captureStream(5);
+    const rec = new MediaRecorder(st, { mimeType: MIME || undefined }), ch = []; rec.ondataavailable = e => e.data.size && ch.push(e.data); const done = new Promise(r => rec.onstop = r); rec.start(200);
+    const t0 = performance.now(); await new Promise(res => { (function f() { g.fillStyle = (((performance.now() / 200) | 0) % 2) ? '#000' : '#010101'; g.fillRect(0, 0, 64, 64); if (performance.now() - t0 < 1500) requestAnimationFrame(f); else res(); })(); });
+    rec.stop(); await done; this.url = URL.createObjectURL(new Blob(ch, { type: (rec.mimeType || MIME || 'video/mp4').split(';')[0] })); return this.url;
+  },
+  async start() {
+    this.method = '';
+    try { if (navigator.wakeLock) { this.lock = await navigator.wakeLock.request('screen'); this.lock.addEventListener && this.lock.addEventListener('release', () => { this.lock = null; }); this.method = 'Wake Lock'; } } catch {}
+    if (!this.method) {                                              // older iPhones: a tiny looping silent video keeps the screen on
+      try {
+        const url = await withTimeout(this.makeClip(), 5000);
+        if (!this.vid) { const v = document.createElement('video'); v.muted = true; v.loop = true; v.playsInline = true; v.setAttribute('playsinline', ''); v.style.cssText = 'position:fixed;left:0;top:0;width:2px;height:2px;opacity:.01;pointer-events:none'; document.body.appendChild(v); this.vid = v; }
+        this.vid.src = url; await this.vid.play(); this.method = 'Video trick';
+      } catch {}
+    }
+    return this.method;
+  },
+  async reacquire() { if (this.method === 'Wake Lock' && !this.lock) { try { this.lock = await navigator.wakeLock.request('screen'); } catch {} } else if (this.method === 'Video trick' && this.vid && this.vid.paused) { try { await this.vid.play(); } catch {} } },
+  stop() { try { this.lock && this.lock.release(); } catch {} this.lock = null; if (this.vid) { try { this.vid.pause(); this.vid.remove(); } catch {} this.vid = null; } this.method = ''; },
+};
+
+/* ---------------- waiting screen (photos / videos that play while nobody is using the booth) ---------------- */
+function playIdle(box, cfg) {
+  const items = (cfg.idleIds || []).map(id => ASSETS[id]).filter(Boolean); if (!items.length) return null;
+  box.innerHTML = ''; let i = 0, timer = 0, alive = true; const urls = [];
+  const show = () => {
+    if (!alive) return; const a = items[i % items.length]; i++;
+    const url = URL.createObjectURL(a.blob); urls.push(url); const isV = (a.blob.type || '').startsWith('video');
+    const el = document.createElement(isV ? 'video' : 'img'); el.className = 'idleitem'; el.src = url;
+    if (isV) { el.muted = true; el.playsInline = true; el.setAttribute('playsinline', ''); el.autoplay = true; if (items.length === 1) el.loop = true; else { el.onended = next; el.onerror = next; } el.play().catch(() => {}); }
+    else if (items.length > 1) timer = setTimeout(next, Math.max(2, cfg.idleSlide || 6) * 1000);
+    box.appendChild(el); requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('in')));
+    [...box.children].slice(0, -1).forEach(o => setTimeout(() => o.remove(), 800));
+  };
+  const next = () => { clearTimeout(timer); show(); };
+  show();
+  return { stop() { alive = false; clearTimeout(timer); box.innerHTML = ''; urls.forEach(u => URL.revokeObjectURL(u)); } };
+}
+const IDLE = { last: 0, shown: false, player: null, timer: 0 };
+function idleTouch() { IDLE.last = performance.now(); if (IDLE.shown) hideIdle(); }
+function showIdle() { if (IDLE.shown || B.phase !== 'waiting' || !EV) return; const p = playIdle($('#idle'), EV.settings); if (!p) return; IDLE.player = p; IDLE.shown = true; $('#idle').classList.remove('hidden'); }
+function hideIdle() { if (!IDLE.shown) return; if (IDLE.player) IDLE.player.stop(); IDLE.player = null; IDLE.shown = false; $('#idle').classList.add('hidden'); IDLE.last = performance.now(); }
+function idleLoop() {
+  clearInterval(IDLE.timer);
+  IDLE.timer = setInterval(() => {
+    const cfg = EV && EV.settings; if (!cfg) return;
+    if (B.phase !== 'waiting') { if (IDLE.shown) hideIdle(); IDLE.last = performance.now(); return; }
+    if (!cfg.idleOn || !(cfg.idleIds || []).length) return;
+    if (Motion.intensity > .3) idleTouch();                                  // any movement wakes the camera
+    if (!IDLE.shown && performance.now() - IDLE.last >= (cfg.idleAfter || 20) * 1000) showIdle();
+  }, 400);
+}
+$('#idle').addEventListener('click', () => idleTouch());
 
 /* ---------------- booth ---------------- */
 const B = { phase: 'idle', stream: null, trigger: 'tap', rec: null, wake: null, cdTimer: null, raf: 0 };
@@ -1048,23 +1160,31 @@ async function streamShape(stream) {
 /* iPhones crop the picture ('zoom') when you ask for 60 fps or a 16:9 size, so ask for the shape we want, check what
    we really got, and keep trying other requests until the shape matches. */
 async function getCam(cfg) {
-  const target = cfg.framing === 'tall' ? 9 / 16 : 3 / 4, f = { facingMode: cfg.facing }, tall = Math.round(1080 / target);
-  const cands = [
+  const target = cfg.framing === 'tall' ? 9 / 16 : 3 / 4, f = { facingMode: cfg.facing }, tall = Math.round(1080 / target), want60 = cfg.smooth60 !== false;
+  const shapes = [
     { ...f, aspectRatio: { exact: target }, width: { ideal: 1080 } },
     { ...f, width: { ideal: 1080 }, height: { ideal: tall }, aspectRatio: { ideal: target } },
     { ...f, width: { ideal: tall }, height: { ideal: 1080 } },
     { ...f, aspectRatio: { ideal: target } },
     { ...f },
   ];
-  let best = null, err;
-  for (const v of cands) {
-    let st; try { st = await navigator.mediaDevices.getUserMedia({ video: v, audio: false }); } catch (e) { err = e; if (e && e.name === 'NotAllowedError') break; continue; }
-    const sh = await streamShape(st); st.__shape = sh;
-    if (sh.ar && Math.abs(sh.ar - target) < 0.05) { if (best) best.getTracks().forEach(t => t.stop()); best = st; break; }
-    if (!best) best = st; else st.getTracks().forEach(t => t.stop());
+  let best = null, bestScore = -1, err;
+  const consider = async (req) => {
+    let st; try { st = await navigator.mediaDevices.getUserMedia({ video: req, audio: false }); } catch (e) { err = e; return e && e.name === 'NotAllowedError' ? 'stop' : 'next'; }
+    const sh = await streamShape(st), fps = Math.round((st.getVideoTracks()[0].getSettings() || {}).frameRate || 30); st.__shape = sh; st.__fps = fps;
+    const shapeOK = sh.ar && Math.abs(sh.ar - target) < 0.05, score = (shapeOK ? 100 : 0) + (want60 ? Math.min(fps, 60) / 60 * 50 : 0);
+    if (score > bestScore) { if (best) best.getTracks().forEach(t => t.stop()); best = st; bestScore = score; } else st.getTracks().forEach(t => t.stop());
+    return shapeOK && (!want60 || fps >= 50) ? 'done' : 'next';
+  };
+  outer: for (const v of shapes) {
+    for (const withFps of (want60 ? [true, false] : [false])) {
+      const r = await consider(withFps ? { ...v, frameRate: { ideal: 60 } } : v);
+      if (r === 'done' || r === 'stop') break outer;
+    }
+    if (best && best.__shape.ar && Math.abs(best.__shape.ar - target) < 0.05) break;    // right shape found; frame rate is as good as this phone allows
   }
   if (!best) {
-    for (const c of [{ video: true, audio: false }]) { try { best = await navigator.mediaDevices.getUserMedia(c); best.__shape = await streamShape(best); break; } catch (e) { err = e; if (e && e.name === 'NotAllowedError') break; } }
+    try { best = await navigator.mediaDevices.getUserMedia({ video: true, audio: false }); best.__shape = await streamShape(best); best.__fps = Math.round((best.getVideoTracks()[0].getSettings() || {}).frameRate || 30); } catch (e) { err = e; }
   }
   if (!best) throw err;
   try { const t = best.getVideoTracks()[0], caps = t.getCapabilities && t.getCapabilities(); if (caps && caps.zoom) await t.applyConstraints({ advanced: [{ zoom: caps.zoom.min }] }); } catch {}   // zoomed all the way out
@@ -1089,8 +1209,9 @@ async function startBooth() {
     if (ok && B.stream) { Motion.onTrigger = () => { if (B.phase === 'waiting') beginCountdown('motion'); }; Motion.arm(cfg); $('#b-hero').innerHTML = 'SPIN THE RIG<small>or tap to start</small>'; $('#b-meter').classList.remove('hidden'); }
     else toast('Motion sensors are off — tap to start still works', 4000);
   }).catch(() => {});
-  try { B.wake = await navigator.wakeLock.request('screen'); } catch {}
-  bstatus(''); bphase('waiting'); meterLoop();
+  const awake = await KeepAwake.start();
+  { const sh2 = B.stream.__shape || {}; $('#b-info').textContent = `${cfg.facing === 'user' ? 'Front' : 'Back'} camera · ${sh2.w}×${sh2.h} · ${B.stream.__fps || 30} fps · ${awake ? 'screen awake ✓' : 'screen may sleep ⚠'}`; }
+  bstatus(''); bphase('waiting'); meterLoop(); IDLE.last = performance.now(); idleLoop();
 }
 function fitFrame() {                       // the frame always has the video's own shape, so nothing is cropped or zoomed
   const cam = $('#cam'), f = $('#frame'); if (!cam.videoWidth) return;
@@ -1113,7 +1234,7 @@ function meterLoop() {
 function stopBooth() {
   cancelAnimationFrame(B.raf); clearTimeout(B.cdTimer); Motion.disarm();
   if (B.stream) B.stream.getTracks().forEach(t => t.stop()); B.stream = null; $('#cam').srcObject = null;
-  try { B.wake && B.wake.release(); } catch {} B.wake = null; bphase('idle');
+  KeepAwake.stop(); clearInterval(IDLE.timer); hideIdle(); bphase('idle');
 }
 /* backup: record with the phone's normal camera app, then run it through the same effects */
 $('#b-file').onchange = async e => {
@@ -1127,6 +1248,7 @@ $('#b-wait').addEventListener('click', e => { if (e.target.id === 'b-wait') begi
 
 function beginCountdown(trigger) {
   if (B.phase !== 'waiting') return;
+  idleTouch();
   B.trigger = trigger; Motion.hold(999999);
   const total = trigger === 'motion' ? EV.settings.motionDelay : EV.settings.countdown; let n = total;
   $('#b-cdlabel').textContent = trigger === 'motion' ? 'Movement detected — get ready' : '';
@@ -1169,7 +1291,7 @@ async function handleRecording(blob, dur) {
     const skipTimer = setTimeout(() => $('#p-skip').classList.remove('hidden'), (dur + 8) * 1000);
     $('#p-skip').onclick = () => ctl.skip();
     try {
-      const r = await Promise.race([renderClip(blob, dur, cfg, assets, setProg, setStage, ctl), skip, new Promise((_, rej) => setTimeout(() => rej(new Error('took too long')), (dur * 1.8 + 30) * 1000))]);
+      const r = await Promise.race([renderClip(blob, dur, { ...cfg, __fps: (B.stream && B.stream.__fps) || 30 }, assets, setProg, setStage, ctl), skip, new Promise((_, rej) => setTimeout(() => rej(new Error('took too long')), (dur * 1.8 + 30) * 1000))]);
       if (r.blob.size > 1000) { processed = r.blob; clip.duration = r.duration; clip.note = 'Finished in ' + ((performance.now() - t0) / 1000).toFixed(0) + 's' + (r.musicMissing ? ' · music could not play, saved without sound' : ''); }
       else { failed = true; clip.note = 'Saved without effects (empty result)'; }
     } catch (e) { ctl.stop = true; failed = true; clip.note = 'Saved without effects (' + (e && e.message || 'error') + ')'; console.warn('processing failed, keeping raw take', e); }
@@ -1178,7 +1300,7 @@ async function handleRecording(blob, dur) {
   setStage('Saving…');
   clip.processed = processed; clip.type = processed.type || blob.type;
   clip.original = (cfg.keepOriginals || failed) && processed !== blob ? blob : null;
-  try { clip.thumb = await withTimeout(makeThumb(processed), 6000); } catch { clip.thumb = null; }
+  try { clip.thumb = await withTimeout(makeThumb(processed), 8000); clip.thumbAt = 3; } catch { clip.thumb = null; }
   try { await DB.put('clips', clip); EV.clipCount++; await DB.put('events', EV); }
   catch (e) { toast('Storage is full — export and delete old videos'); }
   openReview(clip);
@@ -1237,7 +1359,7 @@ $('#r-done').onclick = () => {
 };
 $('#r-retake').onclick = async () => { if (!confirm('Delete this video and retake?')) return; await DB.del('clips', CLIP.id); EV.clipCount = Math.max(0, EV.clipCount - 1); await DB.put('events', EV); $('#r-video').pause(); show('booth'); afterReview(); };
 function afterReview() { clearInterval(REV.t); if (B.stream) resumeWaiting(); else { bstatus(''); bphase('resume'); } }
-function resumeWaiting() { bphase('waiting'); Motion.hold(EV.settings.cooldown * 1000); setProg(0); }
+function resumeWaiting() { IDLE.last = performance.now(); bphase('waiting'); Motion.hold(EV.settings.cooldown * 1000); setProg(0); }
 
 /* ---------------- exports (shared by Videos and Summary) ---------------- */
 async function exportZip(ev, clips) {
@@ -1253,6 +1375,62 @@ function exportLeads(ev, clips) {
   const f = new File([['email,whatsapp,consent_marketing,captured_at,clip_id', ...rows].join('\n')], baseName(ev) + '_leads.csv', { type: 'text/csv' });
   shareFiles([f], 'Leads').then(ok => ok || download(f, f.name));
 }
+
+/* ---------------- ready check ---------------- */
+const RD_ROWS = [
+  ['camera', 'Camera', 'Opens the camera the way the booth will, and shows the picture shape and smoothness.'],
+  ['sensor', 'Movement sensor', 'This is the phone’s built-in gyroscope and accelerometer — the same parts that turn the screen when you rotate the phone. The booth uses them to feel the 360 platform start to spin.'],
+  ['awake', 'Screen stays awake', 'Stops the phone from locking or dimming while the booth is running.'],
+  ['storage', 'Storage', 'Space left on this phone for videos.'],
+  ['battery', 'Battery', 'Charge level while the booth runs.'],
+  ['idle', 'Waiting screen', 'The photos or videos that play while nobody is using the booth.'],
+];
+function rdSet(k, state, detail) { const r = $(`#rd-list .rdrow[data-k="${k}"]`); if (!r) return; r.className = 'rdrow ' + state; r.dataset.k = k; if (detail != null) r.querySelector('.sub').textContent = detail; }
+function openReady() {
+  $('#rd-list').innerHTML = RD_ROWS.map(([k, t, d]) => `<div class="rdrow" data-k="${k}"><div class="dot"></div><div class="grow"><b>${t}</b><div class="sub">${esc(d)}</div></div><button class="btn ghost" data-run="${k}">Test</button></div>`).join('');
+  $$('#rd-list [data-run]').forEach(b => b.onclick = () => RD_CHECK[b.dataset.run]());
+  show('ready');
+}
+const RD_CHECK = {
+  async camera() {
+    rdSet('camera', 'run', 'Opening the camera…'); const cfg = CUR.settings;
+    try { const st = await getCam(cfg), sh = st.__shape || {}, fps = st.__fps || 30, target = cfg.framing === 'tall' ? 9 / 16 : 3 / 4; st.getTracks().forEach(t => t.stop());
+      const shapeOK = sh.ar && Math.abs(sh.ar - target) < .05, smooth = !cfg.smooth60 || fps >= 50;
+      rdSet('camera', shapeOK && smooth ? 'ok' : 'warn', `${cfg.facing === 'user' ? 'Front' : 'Back'} camera · ${sh.w}×${sh.h} · ${fps} fps` + (shapeOK ? '' : ' — not the full view you chose; the phone gave a cropped picture') + (smooth ? '' : ' — this phone cannot do 60 fps at this shape, so it will run at ' + fps));
+    } catch (e) { rdSet('camera', 'bad', camError(e)); }
+  },
+  async sensor() {
+    rdSet('sensor', 'run', 'Asking for permission…'); const ok = await Motion.permission();
+    if (!ok) { rdSet('sensor', 'bad', 'Blocked. On iPhone: Settings → Safari → Motion & Orientation Access, then reopen the app.'); return; }
+    let n = 0, peak = 0, gyro = false; const h = e => { n++; const rr = e.rotationRate; if (rr && (rr.alpha != null || rr.beta != null)) gyro = true; peak = Math.max(peak, rr ? Math.hypot(rr.alpha || 0, rr.beta || 0, rr.gamma || 0) : 0); };
+    window.addEventListener('devicemotion', h); rdSet('sensor', 'run', 'Listening for 3 seconds — gently turn the phone…'); await sleep(3000); window.removeEventListener('devicemotion', h);
+    if (!n) rdSet('sensor', 'bad', 'No readings came in. This phone may not have a movement sensor, or the permission is off.');
+    else rdSet('sensor', 'ok', `Working — ${n} readings from the ${gyro ? 'gyroscope and accelerometer' : 'accelerometer'}.` + (peak > 8 ? ` Strongest turn: ${Math.round(peak)}°/s.` : ' You did not turn the phone, which is fine — use “Test movement” in settings to tune it.'));
+  },
+  async awake() {
+    rdSet('awake', 'run', 'Switching it on…'); const m = await KeepAwake.start();
+    rdSet('awake', m ? 'ok' : 'warn', m ? `Screen will stay on (${m}). It stays on while the booth is open.` : 'Could not force it. Set Settings → Display & Brightness → Auto-Lock → Never for the event.');
+  },
+  async storage() {
+    rdSet('storage', 'run', 'Checking…');
+    try { const e = await navigator.storage.estimate(), free = (e.quota || 0) - (e.usage || 0), clips = await DB.all('clips'); const avg = clips.length ? clips.reduce((a, c) => a + ((c.processed && c.processed.size) || 0), 0) / clips.length : 6e6, n = Math.floor(free / Math.max(avg, 1e6));
+      rdSet('storage', free < 5e8 ? 'bad' : free < 2e9 ? 'warn' : 'ok', `${fmtBytes(free)} free for this app — room for ${n > 999 ? 'well over 999' : 'about ' + n} more videos.` + (free < 2e9 ? ' Export and delete old videos first.' : ''));
+    } catch { rdSet('storage', 'warn', 'This phone would not say how much space is left.'); }
+  },
+  async battery() {
+    rdSet('battery', 'run', 'Checking…');
+    try { if (!navigator.getBattery) throw 0; const b = await navigator.getBattery(), pct = Math.round(b.level * 100); rdSet('battery', pct < 30 && !b.charging ? 'bad' : pct < 60 && !b.charging ? 'warn' : 'ok', `${pct}%${b.charging ? ' and charging' : ' — not charging'}`); }
+    catch { rdSet('battery', 'warn', 'iPhones do not let websites read the battery. For a long event keep the phone plugged in.'); }
+  },
+  async idle() {
+    const n = (CUR.settings.idleIds || []).filter(id => ASSETS[id]).length;
+    rdSet('idle', CUR.settings.idleOn && n ? 'ok' : 'warn', CUR.settings.idleOn ? (n ? `On — ${n} item${n > 1 ? 's' : ''} play after ${CUR.settings.idleAfter} s of nobody using the booth.` : 'Turned on, but no photos or videos added yet.') : 'Off. Turn it on in Event settings → Waiting screen.');
+  },
+};
+$('#hub-ready').onclick = () => openReady();
+$('#rd-back').onclick = () => { KeepAwake.stop(); openHub(CUR.id); };
+$('#rd-start').onclick = () => { KeepAwake.stop(); enterBooth(CUR.id); };
+$('#rd-run').onclick = async () => { const b = $('#rd-run'); b.disabled = true; for (const k of ['awake', 'storage', 'battery', 'idle', 'camera', 'sensor']) { await RD_CHECK[k](); } b.disabled = false; };
 
 /* ---------------- end-of-event summary ---------------- */
 const fmtDur = sec => { sec = Math.round(sec); const m = Math.floor(sec / 60); return m ? `${m} min ${sec % 60} s` : `${sec} s`; };
@@ -1301,7 +1479,7 @@ async function openVideos() {
   $$('[data-batch]', a).forEach(b => b.onclick = async () => { const files = batches[+b.dataset.batch].map(c => clipFile(c, CUR)); if (await shareFiles(files, CUR.name)) { for (const c of batches[+b.dataset.batch]) { c.deliveries.push({ kind: 'photos', at: Date.now() }); await DB.put('clips', c); } toast('Done'); } else toast('Sharing isn’t available here — use the .zip'); });
   $('#ev-zip').onclick = () => exportZip(CUR, CUR_CLIPS);
   $('#ev-csv').onclick = () => exportLeads(CUR, CUR_CLIPS);
-  renderReelBox(); renderGrid(); show('videos');
+  renderReelBox(); renderGrid(); show('videos'); upgradeThumbs(CUR_CLIPS);
 }
 async function renderReelBox() {
   const box = $('#ev-reel'), reel = await DB.get('kv', 'reel:' + CUR.id), can = CUR_CLIPS.length > 0;
@@ -1316,10 +1494,18 @@ async function renderReelBox() {
     } catch (e) { $('#rl-msg').textContent = 'Could not build the reel: ' + e.message; btn.disabled = false; }
   };
 }
+async function upgradeThumbs(clips) {            // older videos: replace the first-frame picture with the 3rd-second picture
+  for (const c of clips) {
+    if (c.thumbAt === 3 || c.thumbAt === -1 || !c.processed) continue;
+    try { c.thumb = await withTimeout(makeThumb(c.processed), 8000); c.thumbAt = 3; } catch { c.thumbAt = -1; }
+    try { await DB.put('clips', c); } catch {}
+    const tile = $(`#ev-grid .thumb[data-id="${c.id}"]`); if (tile && c.thumb) { let img = $('img', tile); if (!img) { img = document.createElement('img'); img.alt = ''; tile.prepend(img); } img.src = URL.createObjectURL(c.thumb); }
+  }
+}
 function renderGrid() {
   const g = $('#ev-grid'); g.innerHTML = '';
   CUR_CLIPS.forEach(c => {
-    const d = document.createElement('div'); d.className = 'thumb';
+    const d = document.createElement('div'); d.className = 'thumb'; d.dataset.id = c.id;
     d.innerHTML = (c.thumb ? `<img alt="">` : '') + `<span>${c.duration.toFixed(0)}s${c.lead ? ' ✉' : ''}</span>`;
     if (c.thumb) $('img', d).src = URL.createObjectURL(c.thumb);
     d.onclick = () => openModal(c); g.appendChild(d);
@@ -1338,7 +1524,7 @@ $('#m-del').onclick = async () => { if (!confirm('Delete this clip?')) return; a
     navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(r => r.update().catch(() => {})).catch(() => {});
     if (navigator.serviceWorker.controller) navigator.serviceWorker.addEventListener('controllerchange', () => { if (!sessionStorage.getItem('swr')) { sessionStorage.setItem('swr', '1'); if (B.phase === 'idle') location.reload(); } });
   }
-  document.addEventListener('visibilitychange', async () => { if (document.visibilityState === 'visible' && B.phase === 'waiting') { try { B.wake = await navigator.wakeLock.request('screen'); } catch {} } });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') KeepAwake.reacquire(); });
   const k = localStorage.getItem('kiosk');
   // With a PIN set, a restart mid-event returns to the locked booth. Without a PIN there is nothing to lock,
   // so the app opens on Home with a 'Resume booth' card instead of trapping you.
