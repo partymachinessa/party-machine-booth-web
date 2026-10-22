@@ -843,7 +843,7 @@ function renderPinCard() {
 
 /* ---------------- home ---------------- */
 const allEvents = async () => (await DB.all('events')).sort((a, b) => b.createdAt - a.createdAt);
-const APP_VERSION = '4.5';
+const APP_VERSION = '4.6';
 async function renderHome() {
   const evs = await allEvents();
   const rb = $('#h-resume'); rb.innerHTML = ''; const kid = localStorage.getItem('kiosk');
@@ -1727,17 +1727,18 @@ const DRIVE = (() => {
     sc.onerror = () => { gisP = null; rej(new Error('Could not reach Google — check the internet.')); }; document.head.appendChild(sc);
   }));
   const valid = () => !!tok && Date.now() < exp - 60000;
-  async function token(interactive = true) {
-    if (valid()) return tok;
-    if (!cfg.clientId) throw new Error('Add your Google Client ID first (Home → Online QR).');
-    if (!online()) throw new Error('No internet.');
-    if (!interactive) throw new Error('Sign in again in Home → Online QR.');
-    await gis();
+  /* Safari only opens the Google popup straight from the tap, so when Google's script is already loaded this builds the request without waiting for anything */
+  function token(interactive = true) {
+    if (valid()) return Promise.resolve(tok);
+    if (!cfg.clientId) return Promise.reject(new Error('Add your Google Client ID first (Home → Online QR).'));
+    if (!online()) return Promise.reject(new Error('No internet.'));
+    if (!interactive) return Promise.reject(new Error('Sign in again in Home → Online QR.'));
+    if (!(window.google && google.accounts && google.accounts.oauth2)) return gis().then(() => token(interactive));
     return new Promise((res, rej) => {
       const c = google.accounts.oauth2.initTokenClient({ client_id: cfg.clientId, scope: SCOPE,
         callback: r => { if (r.error) return rej(new Error(r.error_description || r.error)); tok = r.access_token; exp = Date.now() + (+r.expires_in || 3600) * 1000;
           try { localStorage.setItem('drive.tok', JSON.stringify({ tok, exp })); } catch {} res(tok); },
-        error_callback: e => rej(new Error(e && e.type === 'popup_closed' ? 'Sign-in was closed.' : 'Google sign-in could not open (' + ((e && e.type) || 'blocked') + '). Try opening the app in Safari or Bluefy instead of the home-screen icon.')) });
+        error_callback: e => rej(new Error(e && e.type === 'popup_closed' ? 'Sign-in was closed.' : 'Google sign-in could not open (' + ((e && e.type) || 'blocked') + '). In Safari: Settings → Apps → Safari → turn off Block Pop-ups, then try again.')) });
       c.requestAccessToken({ prompt: cfg.signedOnce ? '' : 'consent' });
     });
   }
@@ -1809,14 +1810,15 @@ const DRIVE = (() => {
   /* settings sheet */
   const stat = (cls, t, d) => { $('#dr-stat').className = 'ledstat ' + cls; $('#dr-stat-t').textContent = t; $('#dr-stat-d').textContent = d || ''; };
   const refreshStat = () => !cfg.clientId ? stat('', 'Not set up', 'Follow the one-time Google setup below.') : valid() ? stat('on', 'Signed in', 'Videos can be uploaded.') : stat('warn', 'Sign in needed', 'Tap “Save & sign in”. Google sign-in lasts about an hour.');
-  async function openSheet() { await load(); $('#dr-id').value = cfg.clientId || ''; $('#dr-auto').checked = !!cfg.auto; $('#dr-msg').textContent = ''; $('#dr-help').open = !cfg.clientId; refreshStat(); $('#dr-sheet').classList.add('show'); if (cfg.clientId && online()) gis().catch(() => {}); }
+  async function openSheet() { await load(); $('#dr-id').value = cfg.clientId || ''; $('#dr-auto').checked = !!cfg.auto; $('#dr-msg').textContent = ''; $('#dr-help').open = !cfg.clientId; refreshStat(); $('#dr-sheet').classList.add('show'); if (online()) gis().catch(() => {}); }
   $('#h-drive').onclick = openSheet; $('#dr-close').onclick = () => $('#dr-sheet').classList.remove('show');
   $('#dr-auto').onchange = async () => { cfg.auto = $('#dr-auto').checked; await save(); };
   $('#dr-signin').onclick = async () => {
     const id = $('#dr-id').value.trim(), m = $('#dr-msg'); if (!/\.apps\.googleusercontent\.com$/.test(id)) { m.textContent = 'That does not look like a Client ID. It ends in .apps.googleusercontent.com'; return; }
     if (id !== cfg.clientId) { cfg.clientId = id; cfg.rootId = ''; cfg.events = {}; tok = null; exp = 0; }
-    m.textContent = 'Opening Google sign-in…'; await save();
-    try { await token(); cfg.signedOnce = true; await save(); m.textContent = 'Signed in.'; } catch (e) { m.textContent = e.message; }
+    m.textContent = 'Opening Google sign-in…';
+    const pending = token(); save();                                   // token() first, so the popup opens straight from the tap
+    try { await pending; cfg.signedOnce = true; await save(); m.textContent = 'Signed in.'; } catch (e) { m.textContent = e.message; }
     refreshStat();
   };
   $('#dr-test').onclick = async () => {
