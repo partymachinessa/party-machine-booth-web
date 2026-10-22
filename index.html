@@ -406,7 +406,7 @@ details.past .list-item{margin-top:8px;background:var(--panel2)}
   <div class="pad" id="pin-pad"></div>
   <button class="back" id="pin-cancel">Cancel</button></div>
 <div class="modal" id="modal"><div class="seg2 hidden" id="m-tabs" style="max-width:420px"><button data-v="main" class="on">With template</button><button data-v="plain">Plain</button></div><video class="player" id="m-video" playsinline loop controls></video>
-  <div class="row" style="width:100%;max-width:420px"><button class="btn" id="m-share">Share</button><button class="btn danger" id="m-del">Delete</button><button class="btn" id="m-close">Close</button></div></div>
+  <div class="row" style="width:100%;max-width:420px"><button class="btn" id="m-share">Share</button><button class="btn hidden" id="m-qr">QR code</button><button class="btn danger" id="m-del">Delete</button><button class="btn" id="m-close">Close</button></div></div>
 <div id="dr-sheet"><div class="panel">
   <div class="top" style="display:flex;align-items:center"><h1 style="flex:1;font-size:22px">Online QR · Google Drive</h1><button class="back" id="dr-close">Close</button></div>
   <div class="ledstat" id="dr-stat"><div class="dot"></div><div><b id="dr-stat-t">Not set up</b><div class="sub" id="dr-stat-d"></div></div></div>
@@ -845,7 +845,7 @@ function renderPinCard() {
 
 /* ---------------- home ---------------- */
 const allEvents = async () => (await DB.all('events')).sort((a, b) => b.createdAt - a.createdAt);
-const APP_VERSION = '4.7';
+const APP_VERSION = '4.8';
 async function renderHome() {
   const evs = await allEvents();
   const rb = $('#h-resume'); rb.innerHTML = ''; const kid = localStorage.getItem('kiosk');
@@ -1682,7 +1682,7 @@ function renderGrid() {
   });
 }
 let MODAL = null;
-function openModal(c) { MODAL = c; const tabs = $('#m-tabs'); tabs.classList.toggle('hidden', !c.plain); $$('button', tabs).forEach(x => x.classList.toggle('on', x.dataset.v === 'main')); const v = $('#m-video'); v.src = URL.createObjectURL(c.processed); $('#modal').classList.add('show'); v.play().catch(() => {}); $('#m-del').classList.toggle('hidden', !!c.reel); }
+function openModal(c) { MODAL = c; const tabs = $('#m-tabs'); tabs.classList.toggle('hidden', !c.plain); $$('button', tabs).forEach(x => x.classList.toggle('on', x.dataset.v === 'main')); const v = $('#m-video'); v.src = URL.createObjectURL(c.processed); $('#modal').classList.add('show'); v.play().catch(() => {}); $('#m-del').classList.toggle('hidden', !!c.reel); DRIVE.modalButton(c); }
 $('#m-close').onclick = () => { $('#m-video').pause(); $('#modal').classList.remove('show'); };
 $$('#m-tabs button').forEach(b => b.onclick = () => { $$('#m-tabs button').forEach(x => x.classList.toggle('on', x === b)); const v = $('#m-video'); v.src = URL.createObjectURL(b.dataset.v === 'plain' ? MODAL.plain : MODAL.processed); v.play().catch(() => {}); });
 $('#m-share').onclick = async () => { const files = MODAL.reel ? [new File([MODAL.processed], 'party-machine-highlight.' + extOf(MODAL.type), { type: MODAL.type })] : clipFiles(MODAL, CUR); if (!(await shareFiles(files, 'Party Machines video'))) downloadAll(files); };
@@ -1828,8 +1828,17 @@ const DRIVE = (() => {
     try { await token(); const f = await mkFolder('Party Machines test'); await api('files/' + f, { method: 'DELETE' }).catch(() => {}); m.textContent = 'Works — Google Drive is connected.'; }
     catch (e) { m.textContent = e.message + (e.body ? ' — ' + e.body : ''); } refreshStat();
   };
+  async function modalButton(c) { await load(); $('#m-qr').classList.toggle('hidden', !!c.reel || !cfg.clientId); }
+  $('#m-qr').onclick = async () => {
+    const b = $('#m-qr'); if (!MODAL || !CUR) return;
+    if (!online()) { toast('No internet right now. Use Share instead.'); return; }
+    b.disabled = true;
+    try { showQR(await ensureLink(MODAL, CUR, f => { b.textContent = Math.round(f * 100) + '%'; })); }
+    catch (e) { toast((e && e.message) || 'Upload failed', 4500); }
+    finally { b.disabled = false; b.textContent = 'QR code'; }
+  };
   return {
-    updateButton,
+    updateButton, modalButton,
     /* called right after a video is saved: upload quietly if automatic upload is on and we are signed in */
     async autoUpload(clip, ev) { try { await load(); if (!cfg.auto || !cfg.clientId || !valid() || !online()) return; await ensureLink(clip, ev); } catch (e) { console.warn('auto upload failed', e); } },
   };
