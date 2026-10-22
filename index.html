@@ -7,14 +7,14 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Booth">
-<meta name="theme-color" content="#09090f">
+<meta name="theme-color" content="#050b1f">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
 <title>Party Machines Booth</title>
 <style>
 :root{
-  --bg:#09090f; --panel:#14141f; --panel2:#1d1d2c; --line:rgba(255,255,255,.09);
-  --text:#f5f4fb; --mut:#8f8ea8; --pink:#fc45ec; --ink:#1a001c; --red:#ff4d5e; --ok:#46e08a;
+  --bg:#050b1f; --panel:#0d1838; --panel2:#15244d; --line:rgba(150,190,255,.15);
+  --text:#f3f6ff; --mut:#93a3c9; --accent:#ffd21f; --blue:#2f7bff; --blue-soft:#cfe0ff; --ink:#1a1400; --red:#ff5d6c; --ok:#46e08a;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;margin:0;background:var(--bg);color:var(--text);
@@ -23,8 +23,8 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--text);
 input,select,button,textarea{font:inherit;color:inherit}
 input[type=text],input[type=email],input[type=tel],input[type=password],select,textarea{
   width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px 14px;-webkit-user-select:text;user-select:text}
-input[type=range]{width:100%;accent-color:var(--pink)}
-input[type=checkbox]{width:22px;height:22px;accent-color:var(--pink)}
+input[type=range]{width:100%;accent-color:var(--accent)}
+input[type=checkbox]{width:22px;height:22px;accent-color:var(--accent)}
 .hidden{display:none!important}
 
 .screen{position:fixed;inset:0;display:none;overflow-y:auto;-webkit-overflow-scrolling:touch;
@@ -37,17 +37,18 @@ h2{font-size:13px;margin:10px 0 0;color:var(--mut);text-transform:uppercase;lett
 .sub{color:var(--mut);font-size:14px}
 .top{display:flex;align-items:center;gap:12px}
 .mark{width:42px;height:42px;border-radius:12px;flex:none}
-.back{background:none;border:0;color:var(--pink);font-weight:700;font-size:16px;padding:6px 0}
+.back{display:inline-flex;align-items:center;gap:6px;align-self:flex-start;background:rgba(47,123,255,.22);border:1px solid rgba(120,170,255,.35);color:var(--blue-soft);font-weight:700;font-size:15px;padding:9px 16px 9px 12px;border-radius:99px;cursor:pointer}
+.back:active{filter:brightness(1.3)}
 
 .card{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:12px}
-.card.live{border-color:rgba(252,69,236,.55);background:linear-gradient(160deg,rgba(252,69,236,.14),var(--panel) 55%)}
+.card.live{border-color:rgba(47,123,255,.6);background:linear-gradient(160deg,rgba(47,123,255,.2),var(--panel) 55%)}
 .pill{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;
-  padding:4px 10px;border-radius:99px;background:var(--pink);color:var(--ink);align-self:flex-start}
+  padding:4px 10px;border-radius:99px;background:var(--accent);color:var(--ink);align-self:flex-start}
 .pill.off{background:var(--panel2);color:var(--mut)}
 .btn{display:flex;align-items:center;justify-content:center;gap:8px;min-height:52px;border-radius:16px;border:0;
   font-weight:700;padding:0 18px;background:var(--panel2);color:var(--text);cursor:pointer;width:100%;text-align:center}
 .btn:active{transform:scale(.985);filter:brightness(1.15)}
-.btn.primary{background:var(--pink);color:var(--ink)}
+.btn.primary{background:var(--accent);color:var(--ink)}
 .btn.danger{color:var(--red)}
 .btn.ghost{background:transparent;border:1px solid var(--line)}
 .btn:disabled{opacity:.45}
@@ -61,7 +62,7 @@ h2{font-size:13px;margin:10px 0 0;color:var(--mut);text-transform:uppercase;lett
 .set{display:flex;flex-direction:column;gap:6px;padding:12px 0;border-bottom:1px solid var(--line)}
 .set:last-child{border-bottom:0}
 .set .lab{display:flex;justify-content:space-between;gap:10px;font-weight:600}
-.set .lab output{color:var(--pink);font-weight:700}
+.set .lab output{color:var(--accent);font-weight:700}
 .set .hint{font-size:12.5px;color:var(--mut)}
 .set.inline{flex-direction:row;align-items:center;justify-content:space-between}
 .filebtn{display:flex;gap:10px;align-items:center}
@@ -75,27 +76,30 @@ h2{font-size:13px;margin:10px 0 0;color:var(--mut);text-transform:uppercase;lett
 
 /* ---------- booth ---------- */
 .screen.booth{padding:0;overflow:hidden;background:#000}
-#cam{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#frame{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:100%;height:100%;overflow:hidden;background:#000}
+#cam{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
 #cam.mirror{transform:scaleX(-1)}
 #boothBorder{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none}
+.bback{position:absolute;left:14px;top:calc(env(safe-area-inset-top) + 12px);z-index:5;background:rgba(5,11,31,.7);backdrop-filter:blur(6px)}
+#b-cdlabel{position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 70px);text-align:center;font-weight:800;font-size:18px;text-shadow:0 2px 12px rgba(0,0,0,.8)}
 .layer{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;
   padding:0 8% calc(env(safe-area-inset-bottom) + 40px)}
-.rings{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.rings{display:none;position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
 .rings i{position:absolute;width:42vw;height:42vw;max-width:260px;max-height:260px;border-radius:50%;border:2px solid rgba(255,255,255,.4);animation:sonar 2.2s ease-out infinite}
 .rings i:nth-child(2){animation-delay:1.1s}
 @keyframes sonar{from{transform:scale(1);opacity:.55}to{transform:scale(2.6);opacity:0}}
 .hero{font-weight:900;font-size:clamp(34px,11vw,52px);letter-spacing:.02em;text-shadow:0 2px 18px rgba(0,0,0,.7);text-align:center;line-height:1.05}
 .hero small{display:block;font-size:15px;letter-spacing:.02em;font-weight:600;opacity:.8;margin-top:8px}
 .meter{width:200px;height:6px;border-radius:9px;background:rgba(255,255,255,.22);overflow:hidden;margin:18px 0 8px}
-.meter i{display:block;height:100%;width:0;background:#fff;border-radius:9px}
+.meter i{display:block;height:100%;width:0;background:var(--accent);border-radius:9px}
 .meter.hot i{background:var(--red)}
-.tapbtn{width:100%;margin-top:18px;min-height:68px;border-radius:99px;border:0;background:#fff;color:#08080e;font-weight:900;font-size:21px;letter-spacing:.08em}
-#b-count{background:rgba(0,0,0,.5);align-items:center;justify-content:center;padding:0}
+.tapbtn{width:100%;margin-top:18px;min-height:68px;border-radius:99px;border:0;background:var(--accent);color:var(--ink);font-weight:900;font-size:21px;letter-spacing:.08em}
+#b-count{background:rgba(0,0,0,.22);align-items:center;justify-content:center;padding:0}
 .ringwrap{position:relative;width:min(62vw,300px);aspect-ratio:1;display:flex;align-items:center;justify-content:center}
 .ringwrap svg{position:absolute;inset:0;transform:rotate(-90deg)}
 .ringwrap circle{fill:none;stroke-width:7}
 .ringwrap .bg{stroke:rgba(255,255,255,.18)}
-.ringwrap .fg{stroke:#fff;stroke-linecap:round;transition:stroke-dashoffset 1s linear}
+.ringwrap .fg{stroke:var(--accent);stroke-linecap:round;transition:stroke-dashoffset 1s linear}
 .num{font-weight:900;font-size:clamp(80px,26vw,140px);line-height:1}
 .num.pop{animation:pop .32s cubic-bezier(.34,1.56,.64,1)}
 @keyframes pop{from{transform:scale(.5);opacity:0}to{transform:scale(1);opacity:1}}
@@ -121,12 +125,12 @@ video.player{width:100%;max-height:52vh;aspect-ratio:9/16;object-fit:contain;bac
 #pin.show{display:flex}
 .dots{display:flex;gap:16px;margin:6px 0 8px}
 .dots i{width:16px;height:16px;border-radius:50%;border:2px solid var(--mut)}
-.dots i.on{background:var(--pink);border-color:var(--pink)}
+.dots i.on{background:var(--accent);border-color:var(--accent)}
 .dots.shake{animation:shake .35s}
 @keyframes shake{25%{transform:translateX(-10px)}75%{transform:translateX(10px)}}
 .pad{display:grid;grid-template-columns:repeat(3,76px);gap:14px}
 .pad button{height:76px;border-radius:50%;border:0;background:var(--panel2);font-size:28px;font-weight:600}
-.pad button:active{background:var(--pink);color:var(--ink)}
+.pad button:active{background:var(--accent);color:var(--ink)}
 .toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 14px);transform:translate(-50%,-30px);opacity:0;
   background:#fff;color:#111;padding:12px 18px;border-radius:99px;font-weight:700;z-index:80;transition:.25s;max-width:90vw;text-align:center;pointer-events:none}
 .toast.show{opacity:1;transform:translate(-50%,0)}
@@ -142,7 +146,7 @@ video.player{width:100%;max-height:52vh;aspect-ratio:9/16;object-fit:contain;bac
 details.past{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:2px 14px 14px}
 details.past summary{list-style:none;cursor:pointer;padding:14px 2px;font-weight:800;display:flex;justify-content:space-between;align-items:center}
 details.past summary::-webkit-details-marker{display:none}
-details.past summary::after{content:'▾';color:var(--pink);font-size:18px}
+details.past summary::after{content:'▾';color:var(--accent);font-size:18px}
 details.past[open] summary::after{content:'▴'}
 details.past .list-item{margin-top:8px;background:var(--panel2)}
 .chk{display:flex;gap:10px;align-items:center;font-size:14px}
@@ -210,8 +214,8 @@ details.past .list-item{margin-top:8px;background:var(--panel2)}
 
 <!-- ===== BOOTH ===== -->
 <section id="s-booth" class="screen booth">
-  <video id="cam" playsinline muted autoplay></video>
-  <img id="boothBorder" alt="" class="hidden">
+  <div id="frame"><video id="cam" playsinline muted autoplay></video><img id="boothBorder" alt="" class="hidden"></div>
+  <button class="back bback hidden" id="b-back">‹ Back</button>
   <div id="b-wait" class="layer">
     <div class="rings"><i></i><i></i></div>
     <div class="hero" id="b-hero">SPIN THE RIG<small>or tap to start</small></div>
@@ -220,6 +224,7 @@ details.past .list-item{margin-top:8px;background:var(--panel2)}
   </div>
   <div id="b-count" class="layer hidden">
     <div class="ringwrap"><svg viewBox="0 0 200 200"><circle class="bg" cx="100" cy="100" r="90"/><circle class="fg" id="b-ring" cx="100" cy="100" r="90"/></svg><div class="num" id="b-num">3</div></div>
+    <div id="b-cdlabel"></div>
   </div>
   <div id="b-rec" class="layer hidden">
     <div class="recpill"><i></i>REC</div>
@@ -243,6 +248,7 @@ details.past .list-item{margin-top:8px;background:var(--panel2)}
 
 <!-- ===== REVIEW ===== -->
 <section id="s-review" class="screen"><div class="wrap">
+  <button class="back" id="r-back">‹ Back</button>
   <div class="top"><h1 style="flex:1">Your video</h1><button class="back" id="r-retake" style="color:var(--red)">Retake</button></div>
   <video class="player" id="r-video" playsinline loop controls></video>
   <button class="btn primary" id="r-share">Share / AirDrop / Save to Photos</button>
@@ -255,7 +261,7 @@ details.past .list-item{margin-top:8px;background:var(--panel2)}
     <div class="sub" id="r-err" style="color:var(--red)"></div>
     <button class="btn" id="r-savelead">Save my details</button>
   </div>
-  <button class="btn primary" id="r-done" style="background:#fff">Done</button>
+  <button class="btn primary big" id="r-done">Done</button>
 </div></section>
 
 <!-- ===== overlays ===== -->
@@ -322,8 +328,8 @@ const DB = (() => {
 
 /* ---------------- settings ---------------- */
 const DEFAULTS = {
-  clipLength: 12, countdown: 3, facing: 'user', outputWidth: 720, keepOriginals: false,
-  motionOn: true, sensitivity: 0.5, cooldown: 6,
+  clipLength: 12, countdown: 3, facing: 'user', framing: 'wide', outputWidth: 720, keepOriginals: false,
+  motionOn: true, sensitivity: 0.5, motionDelay: 2, cooldown: 6, showBack: true, overlayFit: 'cover',
   effect: 'ramp', slowStart: 0.35, slowEnd: 0.7, slowSpeed: 0.4, outroSpeed: 1.4, boomerangSec: 1.5,
   logoCorner: 'br', logoScale: 0.22, logoOpacity: 0.9,
   musicVolume: 0.9, origVolume: 0.15, fade: 0.6,
@@ -339,6 +345,7 @@ async function loadAssets() { ASSETS = {}; (await DB.all('assets')).forEach(a =>
 
 /* ---------------- navigation ---------------- */
 function show(name) {
+  if (name !== 'form' && Motion.testing) { Motion.disarm(); Motion.testing = false; cancelAnimationFrame(MT.raf); }
   $$('.screen').forEach(sc => sc.classList.toggle('active', sc.id === 's-' + name));
   $('#s-' + name).scrollTop = 0;
 }
@@ -385,12 +392,15 @@ const SETTINGS_UI = [
   ['Capture'],
   ['clipLength', 'range', 'Video length', { min: 3, max: 60, step: 1, fmt: v => v + ' s' }],
   ['countdown', 'range', 'Countdown', { min: 0, max: 10, step: 1, fmt: v => v + ' s' }],
-  ['facing', 'select', 'Camera', { opts: [['user', 'Front (selfie)'], ['environment', 'Back']] }],
+  ['facing', 'select', 'Which camera records', { opts: [['user', 'Front camera (selfie)'], ['environment', 'Back camera']] }],
+  ['framing', 'select', 'Picture shape', { opts: [['wide', 'Wide — full view, no zoom (3:4)'], ['tall', 'Tall — 9:16 (the phone crops the sides)']], hint: 'Wide shows everything the camera sees, so nothing looks zoomed in.' }],
   ['outputWidth', 'select', 'Video quality', { num: true, opts: [[720, 'HD 720 (fast, reliable)'], [1080, 'Full HD 1080 (slower)']], hint: 'Videos are finished on the phone in real time — HD 720 is safest for busy events.' }],
   ['keepOriginals', 'check', 'Keep untouched originals', { hint: 'Uses a lot more storage.' }],
   ['Motion trigger'],
   ['motionOn', 'check', 'Start automatically when the rig spins'],
-  ['sensitivity', 'range', 'Sensitivity', { min: 0, max: 1, step: .01, fmt: v => v < .33 ? 'Firm spin' : v > .66 ? 'Light nudge' : 'Balanced', show: 'motionOn' }],
+  ['sensitivity', 'range', 'Sensitivity', { min: 0, max: 1, step: .01, fmt: v => v < .33 ? 'Firm spin' : v > .66 ? 'Very sensitive' : 'Balanced', show: 'motionOn' }],
+  ['motionDelay', 'range', 'Start recording after movement', { min: 0, max: 10, step: 1, fmt: v => v === 0 ? 'Immediately' : v + ' s', show: 'motionOn' }],
+  ['@mt', 'motiontest', 'Test movement', { show: 'motionOn' }],
   ['cooldown', 'range', 'Cooldown between videos', { min: 2, max: 20, step: 1, fmt: v => v + ' s', show: 'motionOn' }],
   ['Effect'],
   ['effect', 'select', 'Style', { opts: [['none', 'None — real time'], ['ramp', 'Speed ramp — slow-mo → speed-up'], ['boomerang', 'Boomerang — forward + snap back']] }],
@@ -400,7 +410,8 @@ const SETTINGS_UI = [
   ['outroSpeed', 'range', 'Outro speed', { min: 1, max: 3, step: .1, fmt: v => v.toFixed(1) + '×', show: 'effect=ramp' }],
   ['boomerangSec', 'range', 'Snap-back length', { min: .5, max: 3, step: .1, fmt: v => v.toFixed(1) + ' s', show: 'effect=boomerang' }],
   ['Look'],
-  ['borderId', 'asset', 'Border overlay (transparent PNG)', { kind: 'border', accept: 'image/*' }],
+  ['borderId', 'asset', 'Transparent photo over the video (PNG)', { kind: 'border', accept: 'image/*' }],
+  ['overlayFit', 'select', 'How the photo fits', { opts: [['cover', 'Fill the frame (crop edges if needed)'], ['fill', 'Stretch to the frame'], ['contain', 'Fit inside the frame']] }],
   ['logoId', 'asset', 'Logo stamp (PNG)', { kind: 'logo', accept: 'image/*' }],
   ['logoCorner', 'select', 'Logo position', { opts: [['tl', 'Top left'], ['tr', 'Top right'], ['bl', 'Bottom left'], ['br', 'Bottom right'], ['c', 'Centre']] }],
   ['logoScale', 'range', 'Logo size', { min: .05, max: .6, step: .01, fmt: v => Math.round(v * 100) + '% of width' }],
@@ -410,6 +421,7 @@ const SETTINGS_UI = [
   ['origVolume', 'range', 'Original audio under music', { min: 0, max: 1, step: .05, fmt: v => Math.round(v * 100) + '%' }],
   ['fade', 'range', 'Music fade in / out', { min: 0, max: 3, step: .1, fmt: v => v.toFixed(1) + ' s' }],
   ['Guests'],
+  ['showBack', 'check', 'Show a Back button on the booth screen', { hint: 'Turn off when guests use the phone — you can still leave with a 3-second press in the top-left corner.' }],
   ['leadOn', 'check', 'Ask for email / WhatsApp'],
   ['leadRequired', 'check', 'Make it required', { show: 'leadOn' }],
 ];
@@ -434,6 +446,7 @@ function renderFormBody() {
     if (type === 'range') html += `<div class="set"${show}><div class="lab"><span>${label}</span><output data-o="${k}"></output></div><input type="range" data-k="${k}" min="${o.min}" max="${o.max}" step="${o.step}"></div>`;
     else if (type === 'check') html += `<div class="set inline"${show}><span>${label}${o.hint ? `<div class="hint">${o.hint}</div>` : ''}</span><input type="checkbox" data-k="${k}"></div>`;
     else if (type === 'select') html += `<div class="set"${show}><div class="lab"><span>${label}</span></div><select data-k="${k}"${o.num ? ' data-num="1"' : ''}>${o.opts.map(([v, t]) => `<option value="${v}">${t}</option>`).join('')}</select>${o.hint ? `<div class="hint">${o.hint}</div>` : ''}</div>`;
+    else if (type === 'motiontest') html += `<div class="set"${show}><div class="lab"><span>Test the movement sensor</span><output id="mt-state"></output></div><div class="meter" style="width:100%"><i id="mt-bar"></i></div><button class="btn ghost" id="mt-btn" style="min-height:44px">Start test</button><div class="hint">Put the phone on the booth, tap Start test, then run the booth. When the bar fills, recording would start. Change Sensitivity until it only fills when the booth moves.</div></div>`;
     else if (type === 'asset') {
       const list = Object.values(ASSETS).filter(a => a.kind === o.kind).sort((a, b) => a.name.localeCompare(b.name));
       html += `<div class="set"><div class="lab"><span>${label}</span></div><select data-k="${k}"><option value="">None</option>${list.map(a => `<option value="${a.id}">${esc(a.name)}</option>`).join('')}</select>
@@ -450,12 +463,24 @@ function renderFormBody() {
       syncFormUI();
     });
   });
+  const mb = $('#mt-btn'); if (mb) mb.onclick = startMotionTest;
   $$('#f-body [data-upload]').forEach(el => el.addEventListener('change', async () => {
     const f = el.files[0]; if (!f) return;
     const a = { id: uid(), kind: el.dataset.kind, name: f.name, blob: f }; await DB.put('assets', a); ASSETS[a.id] = a;
     FORM.D[el.dataset.upload] = a.id; renderFormBody(); toast('Added ' + f.name);
   }));
   syncFormUI(); sc.scrollTop = y;
+}
+const MT = { raf: 0 };
+async function startMotionTest() {
+  const ok = await Motion.permission();
+  if (!ok) { $('#mt-state').textContent = 'Sensor blocked'; toast('Allow Motion & Orientation for this site, then try again', 4000); return; }
+  Motion.testing = true; $('#mt-state').textContent = 'Listening…';
+  Motion.onTrigger = () => { const st = $('#mt-state'); if (st) st.textContent = 'Movement detected ✓'; setTimeout(() => { const s2 = $('#mt-state'); if (s2 && Motion.testing) s2.textContent = 'Listening…'; }, 1500); };
+  Motion.arm(FORM.D); Motion.hold(0);
+  cancelAnimationFrame(MT.raf);
+  const tick = () => { if (!Motion.testing) return; const b = $('#mt-bar'); if (b) b.style.width = clamp(Motion.intensity, 0, 1) * 100 + '%'; MT.raf = requestAnimationFrame(tick); };
+  tick();
 }
 function syncFormUI() {
   const D = FORM.D;
@@ -552,7 +577,7 @@ async function decode(blob) {
 
 /* ---------------- motion trigger ---------------- */
 const Motion = {
-  armed: false, intensity: 0, holdUntil: 0, streak: 0, onTrigger: null, cfg: null, _h: null,
+  armed: false, testing: false, intensity: 0, holdUntil: 0, streak: 0, onTrigger: null, cfg: null, _h: null,
   async permission() {
     if (typeof DeviceMotionEvent === 'undefined') return false;
     if (typeof DeviceMotionEvent.requestPermission === 'function') { try { return (await DeviceMotionEvent.requestPermission()) === 'granted'; } catch { return false; } }
@@ -561,15 +586,17 @@ const Motion = {
   arm(cfg) {
     this.cfg = cfg; this.disarm(); this.armed = true; this.streak = 0;
     this._h = e => {
-      const rr = e.rotationRate, ac = e.acceleration;
+      const rr = e.rotationRate, ac = e.acceleration, gv = e.accelerationIncludingGravity;
       const rot = rr ? Math.hypot(rr.alpha || 0, rr.beta || 0, rr.gamma || 0) : 0;
-      const acc = ac ? Math.hypot(ac.x || 0, ac.y || 0, ac.z || 0) : 0;
-      const rotThr = 140 - this.cfg.sensitivity * 110;                   // deg/s
-      const accThr = (0.85 - this.cfg.sensitivity * 0.6) * 9.81;         // m/s²
+      let acc = ac && ac.x != null ? Math.hypot(ac.x || 0, ac.y || 0, ac.z || 0) : 0;
+      if (!(ac && ac.x != null) && gv && this._lg) acc = Math.hypot((gv.x || 0) - this._lg.x, (gv.y || 0) - this._lg.y, (gv.z || 0) - this._lg.z);
+      if (gv) this._lg = { x: gv.x || 0, y: gv.y || 0, z: gv.z || 0 };
+      const rotThr = 80 - this.cfg.sensitivity * 72;                     // deg/s: 8 (very sensitive) … 80
+      const accThr = (0.5 - this.cfg.sensitivity * 0.45) * 9.81;         // m/s²
       const raw = Math.max(rot / rotThr, acc / accThr);
       this.intensity = Math.max(raw, this.intensity * 0.92);
       if (raw >= 1) this.streak++; else this.streak = 0;
-      if (this.streak >= 5 && performance.now() > this.holdUntil && this.onTrigger) { this.streak = 0; this.onTrigger(); }
+      if (this.streak >= 4 && performance.now() > this.holdUntil && this.onTrigger) { this.streak = 0; this.onTrigger(); }
     };
     window.addEventListener('devicemotion', this._h);
   },
@@ -586,7 +613,10 @@ async function loadImg(blob) { if (!blob) return null; const u = URL.createObjec
 function buildOverlay(W, H, border, logo, cfg) {
   if (!border && !logo) return null;
   const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const g = cv.getContext('2d');
-  if (border) { const s = Math.max(W / border.width, H / border.height); const w = border.width * s, h = border.height * s; g.drawImage(border, (W - w) / 2, (H - h) / 2, w, h); }
+  if (border) {
+    if (cfg.overlayFit === 'fill') g.drawImage(border, 0, 0, W, H);
+    else { const s = (cfg.overlayFit === 'contain' ? Math.min : Math.max)(W / border.width, H / border.height); const w = border.width * s, h = border.height * s; g.drawImage(border, (W - w) / 2, (H - h) / 2, w, h); }
+  }
   if (logo) {
     const w = W * clamp(cfg.logoScale, .03, 1), h = w * logo.height / logo.width, m = W * .04;
     const pos = { tl: [m, m], tr: [W - w - m, m], bl: [m, H - h - m], br: [W - w - m, H - h - m], c: [(W - w) / 2, (H - h) / 2] }[cfg.logoCorner] || [W - w - m, H - h - m];
@@ -769,6 +799,7 @@ const bphase = p => {
   $('#b-wait').classList.toggle('hidden', p !== 'waiting'); $('#b-count').classList.toggle('hidden', p !== 'countdown');
   $('#b-rec').classList.toggle('hidden', p !== 'recording'); $('#b-proc').classList.toggle('hidden', p !== 'processing');
   $('#b-resume').classList.toggle('hidden', p !== 'resume');
+  $('#b-back').classList.toggle('hidden', !(EV && EV.settings.showBack && (p === 'waiting' || p === 'resume')));
 };
 function bstatus(msg) { const el = $('#b-status'); el.textContent = msg || ''; el.classList.toggle('hidden', !msg); }
 async function enterBooth(id) {
@@ -778,6 +809,7 @@ async function enterBooth(id) {
   $('#b-evname').textContent = EV.name; bstatus(''); show('booth'); bphase('resume');
 }
 $('#b-go').onclick = () => startBooth();
+$('#b-back').onclick = () => exitRequest();
 function camError(e) {
   const n = (e && e.name) || '';
   if (n === 'NotAllowedError' || n === 'SecurityError') return 'Camera or microphone is blocked. On iPhone: Settings → Safari → Camera and Microphone → Allow, then close and reopen the app. (If you opened this link inside WhatsApp or Messages, open it in Safari instead.)';
@@ -786,8 +818,10 @@ function camError(e) {
   return 'The camera could not start (' + (n || 'unknown error') + '). Try reopening the app, or use the button below to record with the normal camera.';
 }
 async function getCam(cfg) {
+  const dims = cfg.framing === 'tall' ? { width: { ideal: 1080 }, height: { ideal: 1920 } } : { width: { ideal: 1080 }, height: { ideal: 1440 } };
   const tries = [
-    { video: { facingMode: cfg.facing, width: { ideal: 1080 }, height: { ideal: 1920 }, frameRate: { ideal: 60 } }, audio: true },
+    { video: { facingMode: cfg.facing, ...dims, frameRate: { ideal: 60 } }, audio: true },
+    { video: { facingMode: cfg.facing, ...dims }, audio: true },
     { video: { facingMode: cfg.facing }, audio: true },
     { video: true, audio: true },
     { video: true, audio: false },
@@ -805,7 +839,9 @@ async function startBooth() {
   const motionAsk = cfg.motionOn ? Motion.permission() : Promise.resolve(false); // also asked inside the tap
   try { B.stream = await getCam(cfg); } catch (e) { bstatus(camError(e)); return; }
   const cam = $('#cam'); cam.srcObject = B.stream; cam.classList.toggle('mirror', cfg.facing === 'user'); try { await cam.play(); } catch {}
-  const bi = $('#boothBorder'), bd = assetsFor(cfg).border; if (bd) { bi.src = URL.createObjectURL(bd.blob); bi.classList.remove('hidden'); } else bi.classList.add('hidden');
+  if (!cam.videoWidth) { try { await once(cam, 'loadedmetadata', 4000); } catch {} }
+  fitFrame();
+  const bi = $('#boothBorder'), bd = assetsFor(cfg).border; bi.style.objectFit = { fill: 'fill', contain: 'contain', cover: 'cover' }[cfg.overlayFit] || 'cover'; if (bd) { bi.src = URL.createObjectURL(bd.blob); bi.classList.remove('hidden'); } else bi.classList.add('hidden');
   $('#b-hero').innerHTML = 'READY<small>tap to start</small>'; $('#b-meter').classList.add('hidden');
   motionAsk.then(ok => {
     if (!cfg.motionOn) return;
@@ -815,6 +851,13 @@ async function startBooth() {
   try { B.wake = await navigator.wakeLock.request('screen'); } catch {}
   bstatus(''); bphase('waiting'); meterLoop();
 }
+function fitFrame() {                       // the frame always has the video's own shape, so nothing is cropped or zoomed
+  const cam = $('#cam'), f = $('#frame'); if (!cam.videoWidth) return;
+  const ar = cam.videoWidth / cam.videoHeight, W = innerWidth, H = innerHeight;
+  let w = W, h = W / ar; if (h > H) { h = H; w = H * ar; }
+  f.style.width = Math.round(w) + 'px'; f.style.height = Math.round(h) + 'px';
+}
+addEventListener('resize', fitFrame); addEventListener('orientationchange', () => setTimeout(fitFrame, 300));
 function meterLoop() {
   cancelAnimationFrame(B.raf);
   const m = $('#b-meter'), f = $('#b-meter i');
@@ -839,7 +882,8 @@ $('#b-wait').addEventListener('click', e => { if (e.target.id === 'b-wait') begi
 function beginCountdown(trigger) {
   if (B.phase !== 'waiting') return;
   B.trigger = trigger; Motion.hold(999999);
-  const total = EV.settings.countdown; let n = total;
+  const total = trigger === 'motion' ? EV.settings.motionDelay : EV.settings.countdown; let n = total;
+  $('#b-cdlabel').textContent = trigger === 'motion' ? 'Movement detected — get ready' : '';
   const ring = $('#b-ring'), C = 2 * Math.PI * 90; ring.style.strokeDasharray = C;
   const paint = () => { $('#b-num').textContent = n > 0 ? n : 'GO'; const el = $('#b-num'); el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); ring.style.strokeDashoffset = C * (1 - (total ? n / total : 0)); if (navigator.vibrate) navigator.vibrate(20); };
   if (total === 0) { startRecording(); return; }
@@ -917,6 +961,7 @@ $('#r-savelead').onclick = async () => {
   CLIP.lead = { email: email || null, whatsapp: wa || null, consent: $('#r-consent').checked, at: Date.now() }; CLIP._leadSaved = true;
   await DB.put('clips', stripTmp(CLIP)); $('#r-err').textContent = ''; $('#r-savelead').textContent = 'Saved ✓'; $('#r-savelead').disabled = true; toast('Saved');
 };
+$('#r-back').onclick = () => $('#r-done').click();
 $('#r-done').onclick = () => {
   if (EV.settings.leadOn && EV.settings.leadRequired && !CLIP._leadSaved) { $('#r-err').textContent = 'Please add your details first.'; return; }
   $('#r-video').pause(); show('booth'); afterReview();
