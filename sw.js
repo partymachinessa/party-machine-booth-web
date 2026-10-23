@@ -1,5 +1,5 @@
 /* Party Machines Booth — offline shell. Bump VERSION to force an update. */
-const VERSION = 'pmb-v48';
+const VERSION = 'pmb-v49';
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icon-180.png', 'icon-192.png', 'icon-512.png', 'logo.png', 'qr.js'];
 
 self.addEventListener('install', e => {

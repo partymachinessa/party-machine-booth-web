@@ -845,7 +845,7 @@ function renderPinCard() {
 
 /* ---------------- home ---------------- */
 const allEvents = async () => (await DB.all('events')).sort((a, b) => b.createdAt - a.createdAt);
-const APP_VERSION = '4.8';
+const APP_VERSION = '4.9';
 async function renderHome() {
   const evs = await allEvents();
   const rb = $('#h-resume'); rb.innerHTML = ''; const kid = localStorage.getItem('kiosk');
@@ -1425,7 +1425,8 @@ function startRecording() {
   const t0 = performance.now(); B.rec = rec;
   rec.ondataavailable = e => e.data && e.data.size && chunks.push(e.data);
   rec.onstop = () => { const dur = (performance.now() - t0) / 1000; handleRecording(new Blob(chunks, { type: (rec.mimeType || MIME || 'video/mp4').split(';')[0] }), dur); };
-  rec.start(1000);
+  try { rec.start(1000); }
+  catch (e3) { rec.onstop = null; stopBooth(); bphase('resume'); bstatus('The camera picture could not be recorded. Tap START BOOTH to try again, or use the button below to record with the normal camera.'); return; }
   const bar = $('#b-recbar'), len = cfg.clipLength * 1000;
   const stopTimer = setTimeout(() => { try { rec.stop(); } catch {} }, len + 150);          // a real timer, so a throttled screen can never leave a recording running
   rec.addEventListener('stop', () => clearTimeout(stopTimer));
