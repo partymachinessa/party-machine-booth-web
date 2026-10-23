@@ -414,8 +414,11 @@ details.past .list-item{margin-top:8px;background:var(--panel2)}
   <label class="sub">Google Client ID</label>
   <input type="text" id="dr-id" placeholder="123456-abc.apps.googleusercontent.com" autocapitalize="off" autocomplete="off" spellcheck="false">
   <div class="row"><button class="btn primary" id="dr-signin">Save &amp; sign in</button><button class="btn" id="dr-test">Test upload</button></div>
-  <details class="card" id="dr-helper"><summary><b>Stay signed in (Cloudflare helper)</b></summary>
+  <details class="card" id="dr-helper" open><summary><b>Stay signed in (Cloudflare helper)</b></summary>
     <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+      <input type="text" id="dr-code" placeholder="Paste setup code here, then tap Apply" autocapitalize="off" autocomplete="off" spellcheck="false">
+      <button class="btn primary" id="dr-code-go">Apply setup code</button>
+      <div class="sub">Or fill in the two boxes by hand:</div>
       <input type="text" id="dr-wurl" placeholder="https://booth-drive.yourname.workers.dev" autocapitalize="off" autocomplete="off" spellcheck="false">
       <input type="text" id="dr-wkey" placeholder="Helper key" autocapitalize="off" autocomplete="off" spellcheck="false">
       <div class="row"><button class="btn primary" id="dr-wsave">Save helper</button><button class="btn" id="dr-wclear">Remove</button></div>
@@ -851,7 +854,7 @@ function renderPinCard() {
 
 /* ---------------- home ---------------- */
 const allEvents = async () => (await DB.all('events')).sort((a, b) => b.createdAt - a.createdAt);
-const APP_VERSION = '5.0';
+const APP_VERSION = '5.1';
 async function renderHome() {
   const evs = await allEvents();
   const rb = $('#h-resume'); rb.innerHTML = ''; const kid = localStorage.getItem('kiosk');
@@ -1836,6 +1839,11 @@ const DRIVE = (() => {
     const pending = token(); save();                                   // token() first, so the popup opens straight from the tap
     try { await pending; cfg.signedOnce = true; await save(); m.textContent = 'Signed in.'; } catch (e) { m.textContent = e.message; }
     refreshStat();
+  };
+  $('#dr-code-go').onclick = () => {
+    const m = $('#dr-msg');
+    try { const j = JSON.parse(atob($('#dr-code').value.trim().replace(/^PM1\./, ''))); $('#dr-wurl').value = j.w; $('#dr-wkey').value = j.k; $('#dr-code').value = ''; $('#dr-wsave').click(); }
+    catch { m.textContent = 'That setup code does not look right. Copy it again and paste the whole thing.'; }
   };
   $('#dr-wsave').onclick = async () => {
     const u = $('#dr-wurl').value.trim(), k = $('#dr-wkey').value.trim(), m = $('#dr-msg');
