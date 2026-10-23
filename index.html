@@ -414,6 +414,12 @@ details.past .list-item{margin-top:8px;background:var(--panel2)}
   <label class="sub">Google Client ID</label>
   <input type="text" id="dr-id" placeholder="123456-abc.apps.googleusercontent.com" autocapitalize="off" autocomplete="off" spellcheck="false">
   <div class="row"><button class="btn primary" id="dr-signin">Save &amp; sign in</button><button class="btn" id="dr-test">Test upload</button></div>
+  <details class="card" id="dr-helper"><summary><b>Stay signed in (Cloudflare helper)</b></summary>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+      <input type="text" id="dr-wurl" placeholder="https://booth-drive.yourname.workers.dev" autocapitalize="off" autocomplete="off" spellcheck="false">
+      <input type="text" id="dr-wkey" placeholder="Helper key" autocapitalize="off" autocomplete="off" spellcheck="false">
+      <div class="row"><button class="btn primary" id="dr-wsave">Save helper</button><button class="btn" id="dr-wclear">Remove</button></div>
+    </div></details>
   <label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="dr-auto"> Upload every video automatically (QR is instant)</label>
   <div class="sub" id="dr-msg"></div>
   <details class="card" id="dr-help"><summary><b>One-time Google setup</b></summary>
@@ -845,7 +851,7 @@ function renderPinCard() {
 
 /* ---------------- home ---------------- */
 const allEvents = async () => (await DB.all('events')).sort((a, b) => b.createdAt - a.createdAt);
-const APP_VERSION = '4.9';
+const APP_VERSION = '5.0';
 async function renderHome() {
   const evs = await allEvents();
   const rb = $('#h-resume'); rb.innerHTML = ''; const kid = localStorage.getItem('kiosk');
@@ -1715,7 +1721,7 @@ $('#m-del').onclick = async () => { if (!confirm('Delete this clip?')) return; a
 /* ---------------- Online QR: upload to the operator's Google Drive, show a QR to the share link ---------------- */
 const DRIVE = (() => {
   const SCOPE = 'https://www.googleapis.com/auth/drive.file', UP = {};      // UP: clip id -> upload promise
-  let cfg = { clientId: '', auto: false, rootId: '', events: {} }, tok = null, exp = 0, loaded = false, gisP = null;
+  let cfg = { clientId: '', worker: '', workerKey: '', auto: false, rootId: '', events: {} }, tok = null, exp = 0, loaded = false, gisP = null;
   const online = () => navigator.onLine !== false;
   async function load() {
     if (loaded) return cfg; loaded = true;
@@ -1730,11 +1736,18 @@ const DRIVE = (() => {
     sc.onerror = () => { gisP = null; rej(new Error('Could not reach Google — check the internet.')); }; document.head.appendChild(sc);
   }));
   const valid = () => !!tok && Date.now() < exp - 60000;
+  const ready = () => !!(cfg.worker || cfg.clientId);
+  async function fromHelper() {            // the helper keeps the Google login, so no popup and no tap are needed
+    const r = await fetch(cfg.worker.replace(/\/+$/, '') + '/token', { headers: { 'X-Booth-Key': cfg.workerKey } });
+    if (!r.ok) throw new Error(r.status === 403 ? 'The helper key is wrong.' : 'The helper could not get a Google key (' + r.status + ').');
+    const j = await r.json(); tok = j.access_token; exp = Date.now() + (+j.expires_in || 3600) * 1000; return tok;
+  }
   /* Safari only opens the Google popup straight from the tap, so when Google's script is already loaded this builds the request without waiting for anything */
   function token(interactive = true) {
     if (valid()) return Promise.resolve(tok);
-    if (!cfg.clientId) return Promise.reject(new Error('Add your Google Client ID first (Home → Online QR).'));
+    if (!ready()) return Promise.reject(new Error('Set up Online QR first (Home → Online QR).'));
     if (!online()) return Promise.reject(new Error('No internet.'));
+    if (cfg.worker) return fromHelper();
     if (!interactive) return Promise.reject(new Error('Sign in again in Home → Online QR.'));
     if (!(window.google && google.accounts && google.accounts.oauth2)) return gis().then(() => token(interactive));
     return new Promise((res, rej) => {
@@ -1799,7 +1812,7 @@ const DRIVE = (() => {
   }
   $('#qr-close').onclick = () => $('#qr-modal').classList.remove('show');
   async function updateButton() {
-    await load(); const b = $('#r-qr'); if (!b) return; b.classList.toggle('hidden', !cfg.clientId);
+    await load(); const b = $('#r-qr'); if (!b) return; b.classList.toggle('hidden', !ready());
     b.innerHTML = 'Share as<br>QR code'; $('#r-qrmsg').textContent = '';
   }
   $('#r-qr').onclick = async () => {
@@ -1812,8 +1825,8 @@ const DRIVE = (() => {
   };
   /* settings sheet */
   const stat = (cls, t, d) => { $('#dr-stat').className = 'ledstat ' + cls; $('#dr-stat-t').textContent = t; $('#dr-stat-d').textContent = d || ''; };
-  const refreshStat = () => !cfg.clientId ? stat('', 'Not set up', 'Follow the one-time Google setup below.') : valid() ? stat('on', 'Signed in', 'Videos can be uploaded.') : stat('warn', 'Sign in needed', 'Tap “Save & sign in”. Google sign-in lasts about an hour.');
-  async function openSheet() { await load(); $('#dr-id').value = cfg.clientId || ''; $('#dr-auto').checked = !!cfg.auto; $('#dr-msg').textContent = ''; $('#dr-help').open = !cfg.clientId; refreshStat(); $('#dr-sheet').classList.add('show'); if (online()) gis().catch(() => {}); }
+  const refreshStat = () => cfg.worker ? stat('on', 'Always signed in', 'Using your Cloudflare helper — no sign-in needed.') : !cfg.clientId ? stat('', 'Not set up', 'Follow the one-time Google setup below.') : valid() ? stat('on', 'Signed in', 'Videos can be uploaded.') : stat('warn', 'Sign in needed', 'Tap “Save & sign in”. Google sign-in lasts about an hour.');
+  async function openSheet() { await load(); $('#dr-id').value = cfg.clientId || ''; $('#dr-auto').checked = !!cfg.auto; $('#dr-msg').textContent = ''; $('#dr-wurl').value = cfg.worker || ''; $('#dr-wkey').value = cfg.workerKey || ''; $('#dr-help').open = !ready(); refreshStat(); $('#dr-sheet').classList.add('show'); if (online()) gis().catch(() => {}); }
   $('#h-drive').onclick = openSheet; $('#dr-close').onclick = () => $('#dr-sheet').classList.remove('show');
   $('#dr-auto').onchange = async () => { cfg.auto = $('#dr-auto').checked; await save(); };
   $('#dr-signin').onclick = async () => {
@@ -1824,12 +1837,20 @@ const DRIVE = (() => {
     try { await pending; cfg.signedOnce = true; await save(); m.textContent = 'Signed in.'; } catch (e) { m.textContent = e.message; }
     refreshStat();
   };
+  $('#dr-wsave').onclick = async () => {
+    const u = $('#dr-wurl').value.trim(), k = $('#dr-wkey').value.trim(), m = $('#dr-msg');
+    if (!/^https:\/\/.+/.test(u) || !k) { m.textContent = 'Enter the helper address (starts with https://) and the helper key.'; return; }
+    cfg.worker = u; cfg.workerKey = k; tok = null; exp = 0; m.textContent = 'Checking the helper…';
+    try { await token(); await save(); m.textContent = 'Helper works. You will not need to sign in again.'; } catch (e) { cfg.worker = ''; cfg.workerKey = ''; m.textContent = e.message; }
+    refreshStat();
+  };
+  $('#dr-wclear').onclick = async () => { cfg.worker = ''; cfg.workerKey = ''; tok = null; exp = 0; $('#dr-wurl').value = ''; $('#dr-wkey').value = ''; await save(); $('#dr-msg').textContent = 'Helper removed.'; refreshStat(); };
   $('#dr-test').onclick = async () => {
     const m = $('#dr-msg'); m.textContent = 'Testing…';
     try { await token(); const f = await mkFolder('Party Machines test'); await api('files/' + f, { method: 'DELETE' }).catch(() => {}); m.textContent = 'Works — Google Drive is connected.'; }
     catch (e) { m.textContent = e.message + (e.body ? ' — ' + e.body : ''); } refreshStat();
   };
-  async function modalButton(c) { await load(); $('#m-qr').classList.toggle('hidden', !!c.reel || !cfg.clientId); }
+  async function modalButton(c) { await load(); $('#m-qr').classList.toggle('hidden', !!c.reel || !ready()); }
   $('#m-qr').onclick = async () => {
     const b = $('#m-qr'); if (!MODAL || !CUR) return;
     if (!online()) { toast('No internet right now. Use Share instead.'); return; }
@@ -1841,7 +1862,7 @@ const DRIVE = (() => {
   return {
     updateButton, modalButton,
     /* called right after a video is saved: upload quietly if automatic upload is on and we are signed in */
-    async autoUpload(clip, ev) { try { await load(); if (!cfg.auto || !cfg.clientId || !valid() || !online()) return; await ensureLink(clip, ev); } catch (e) { console.warn('auto upload failed', e); } },
+    async autoUpload(clip, ev) { try { await load(); if (!cfg.auto || !ready() || !(cfg.worker || valid()) || !online()) return; await ensureLink(clip, ev); } catch (e) { console.warn('auto upload failed', e); } },
   };
 })();
 
