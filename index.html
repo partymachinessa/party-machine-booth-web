@@ -27,6 +27,12 @@ input[type=text],input[type=email],input[type=tel],input[type=password],select,t
 input[type=range]{width:100%;accent-color:var(--accent)}
 input[type=checkbox]{width:22px;height:22px;accent-color:var(--accent)}
 .hidden{display:none!important}
+#b-thanks{position:fixed;inset:0;z-index:66;background:radial-gradient(circle at 50% 28%,#1d3f96 0%,var(--bg) 70%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:24px 20px calc(env(safe-area-inset-bottom) + 24px)}
+#b-thanks img{width:min(46vw,200px);height:auto;max-height:28vh;object-fit:contain}
+#b-thanks h1{font-size:clamp(34px,9vw,60px);color:var(--accent);margin:0;line-height:1.05}
+#t-text{font-size:clamp(18px,4.6vw,26px);font-weight:700;max-width:640px}
+#t-social{font-size:clamp(16px,4vw,22px);color:var(--blue-soft)}
+#t-qr{width:min(44vw,200px);height:auto;border-radius:14px;background:#fff}
 
 .screen{position:fixed;inset:0;display:none;overflow-y:auto;-webkit-overflow-scrolling:touch;
   padding:calc(env(safe-area-inset-top) + 18px) 18px calc(env(safe-area-inset-bottom) + 28px)}
@@ -294,6 +300,7 @@ details.past .list-item{margin-top:8px;background:var(--panel2)}
     <button class="btn" id="hub-copy">Copy settings to a new event</button>
     <button class="btn" id="hub-rename">Rename</button>
     <button class="btn" id="hub-backup">Back up this event (one file)</button>
+    <button class="btn" id="hub-cloud">Back up to Google Drive</button>
     <div class="sub" id="hub-bk"></div>
     <button class="btn danger" id="hub-delete">Delete event</button>
   </div>
@@ -373,6 +380,7 @@ details.past .list-item{margin-top:8px;background:var(--panel2)}
     <input type="file" id="b-file" accept="video/*" capture="user" hidden>
   </div>
   <div id="idle" class="hidden"></div>
+  <div id="b-thanks" class="hidden"><img id="t-logo" alt=""><h1 id="t-title"></h1><div id="t-text"></div><div id="t-social"></div><canvas id="t-qr" class="hidden"></canvas><div class="sub" id="t-qrnote"></div><div class="sub">Tap to continue</div></div>
   <div id="flash"></div>
   <div id="hot"></div>
 </section>
@@ -428,6 +436,8 @@ details.past .list-item{margin-top:8px;background:var(--panel2)}
       <div class="row"><button class="btn primary" id="dr-wsave">Save helper</button><button class="btn" id="dr-wclear">Remove</button></div>
     </div></details>
   <label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="dr-auto"> Upload every video automatically (QR is instant)</label>
+  <label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="dr-autobk"> Back up the event to Google Drive when I leave the booth</label>
+  <div class="sub" style="margin-top:-6px">Saves the whole event (videos, leads, settings) in a private “Backups” folder. Uses internet data — about 1 GB for a big event. Keep the app open until it says done.</div>
   <div class="sub" id="dr-msg"></div>
   <details class="card" id="dr-help"><summary><b>One-time Google setup</b></summary>
     <ol>
@@ -447,7 +457,7 @@ details.past .list-item{margin-top:8px;background:var(--panel2)}
   <div class="sub" id="bk-tip"></div>
 </div></div>
 <div id="qr-modal"><div class="panel">
-  <h2 style="margin:0">Scan to get your video</h2>
+  <h2 style="margin:0" id="qr-title">Scan to get your video</h2>
   <canvas id="qr-canvas"></canvas>
   <div class="sub" id="qr-link" style="word-break:break-all"></div>
   <div class="row" style="width:100%"><button class="btn" id="qr-copy">Copy link</button><button class="btn primary" id="qr-close">Done</button></div>
@@ -557,6 +567,7 @@ const DEFAULTS = {
   motionOn: true, sensitivity: 0.5, motionDelay: 2, cooldown: 6, showBack: true, autoReturn: 20,
   segments: [{ start: .35, end: .7, speed: .4 }, { start: .7, end: 1, speed: 1.4 }], boomerang: false, boomerangSec: 1.5,
   overlayFit: 'fill',
+  thanksOn: false, thanksTitle: 'Thank you!', thanksText: 'Your video is ready — share it and tag us!', thanksSocial: '', thanksQR: true, thanksSecs: 6,
   captionText: '', captionPos: 'bottom', captionColor: '#ffd21f', captionSize: 0.06,
   logoCorner: 'br', logoScale: 0.22, logoOpacity: 0.9,
   musicVolume: 0.9, fade: 0.6,
@@ -565,8 +576,9 @@ const DEFAULTS = {
   pinHash: null,
 };
 let S = { ...DEFAULTS };
+let LOOKS = [];                // saved looks: [{id, name, settings}]
 let ASSETS = {};               // id -> {id, name, blob}
-async function loadSettings() { S = { ...DEFAULTS, ...(await DB.get('kv', 'settings') || {}) }; }
+async function loadSettings() { S = { ...DEFAULTS, ...(await DB.get('kv', 'settings') || {}) }; LOOKS = (await DB.get('kv', 'looks')) || []; }
 const saveSettings = () => DB.put('kv', S, 'settings');
 async function loadAssets() { ASSETS = {}; (await DB.all('assets')).forEach(a => { if (!a.kind && ['border', 'logo', 'music'].includes(a.id)) a.kind = a.id; if (a.kind) ASSETS[a.id] = a; }); }
 
@@ -635,6 +647,7 @@ const SPEED_PRESETS = [
 const SETTINGS_UI = [
   { h: 'Quick style', open: true, desc: 'Pick a look to start from, then fine-tune the sections below.' },
   ['@presets', 'presets'],
+  ['@looks', 'looks'],
   { h: 'Recording', open: true, desc: 'How long each video is and how the camera behaves.' },
   ['clipLength', 'range', 'Video length', { min: 3, max: 60, step: 1, fmt: v => v + ' s', chips: [5, 8, 10, 12, 15, 20, 30] }],
   ['countdown', 'range', 'Countdown when you tap to start', { min: 0, max: 10, step: 1, fmt: v => v === 0 ? 'None' : v + ' s' }],
@@ -686,6 +699,13 @@ const SETTINGS_UI = [
   ['autoReturn', 'select', 'Return to the booth by itself', { num: true, opts: [[0, 'Never'], [10, 'After 10 s'], [20, 'After 20 s'], [30, 'After 30 s'], [60, 'After 1 min']], hint: 'Perfect when nobody is standing at the phone. Tapping the screen keeps the video open.' }],
   ['showBack', 'check', 'Show a Back button on the booth screen', { hint: 'Turn off when guests use the phone — you can still leave with a 3-second press in the top-left corner.' }],
   ['keepOriginals', 'check', 'Keep the untouched original too', { hint: 'Uses a lot more storage.' }],
+  { h: 'Thank-you screen', open: false, desc: 'Shown to guests for a few seconds after they tap Done, with your logo (the event logo if it has one).' },
+  ['thanksOn', 'check', 'Show a thank-you screen'],
+  ['thanksTitle', 'text', 'Big title', { placeholder: 'Thank you!', show: 'thanksOn' }],
+  ['thanksText', 'text', 'Message', { placeholder: 'Your video is ready — share it and tag us!', show: 'thanksOn' }],
+  ['thanksSocial', 'text', 'Instagram, website or review line', { placeholder: '@partymachines · leave us a Google review', show: 'thanksOn' }],
+  ['thanksQR', 'check', 'Show the video’s QR code on it', { hint: 'Only when the video was uploaded to Google Drive (automatic upload on).', show: 'thanksOn' }],
+  ['thanksSecs', 'select', 'Show it for', { num: true, opts: [[4, '4 seconds'], [6, '6 seconds'], [10, '10 seconds'], [15, '15 seconds'], [30, '30 seconds']], show: 'thanksOn' }],
 ];
 
 let FORM = null;
@@ -713,6 +733,9 @@ function renderFormBody() {
     else if (type === 'check') html += `<div class="set inline"${show}><span>${label}${o.hint ? `<div class="hint">${o.hint}</div>` : ''}</span><input type="checkbox" data-k="${k}"></div>`;
     else if (type === 'select') html += `<div class="set"${show}><div class="lab"><span>${label}</span></div><select data-k="${k}"${o.num ? ' data-num="1"' : ''}>${o.opts.map(([v, t]) => `<option value="${v}">${t}</option>`).join('')}</select>${o.hint ? `<div class="hint">${o.hint}</div>` : ''}</div>`;
     else if (type === 'text') html += `<div class="set"${show}><div class="lab"><span>${label}</span></div><input type="text" data-k="${k}" maxlength="60" placeholder="${esc(o.placeholder || '')}"></div>`;
+    else if (type === 'looks') html += `<div class="set"><div class="lab"><span>Saved looks</span></div><select id="lk-sel"><option value="">${LOOKS.length ? 'Choose a saved look…' : 'No saved looks yet'}</option>${LOOKS.map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join('')}</select>
+      <div class="row" style="margin-top:8px"><button type="button" class="btn ghost" id="lk-use" style="min-height:44px">Use look</button><button type="button" class="btn ghost" id="lk-save" style="min-height:44px">Save as look…</button><button type="button" class="btn ghost" id="lk-del" style="min-height:44px">Delete</button></div>
+      <div class="hint">A look keeps everything on this page: speed, photo, logo, text, music, thank-you screen and timing.</div></div>`;
     else if (type === 'presets') html += `<div class="presets">${SPEED_PRESETS.map((p, i) => `<button type="button" class="preset" data-preset="${i}"><b>${p[0]}</b><span>${p[1]}</span></button>`).join('')}</div>`;
     else if (type === 'speed') html += `<div class="set" id="sp-box"><div class="sub" id="sp-sum"></div><div class="tl" id="sp-tl"></div><div class="tlticks" id="sp-ticks"></div><div id="sp-list"></div>
       <div class="row" style="margin-top:10px"><button type="button" class="btn ghost" data-add="slow" style="min-height:46px">+ Slow-mo section</button><button type="button" class="btn ghost" data-add="fast" style="min-height:46px">+ Fast-forward section</button></div></div>`;
@@ -744,6 +767,19 @@ function renderFormBody() {
   $$('#f-body .chip').forEach(c => c.onclick = () => { D[c.dataset.chip] = +c.dataset.v; const r = $(`#f-body [data-k="${c.dataset.chip}"]`); if (r) r.value = D[c.dataset.chip]; syncFormUI(); });
   $$('#f-body .preset').forEach(b => b.onclick = () => { const p = SPEED_PRESETS[+b.dataset.preset]; Object.assign(D, JSON.parse(JSON.stringify(p[2]))); FORM.spSig = null; syncFormUI(); toast('Style: ' + p[0]); });
   $$('#f-body [data-add]').forEach(b => b.onclick = () => addSegment(b.dataset.add));
+  const lkSel = $('#lk-sel'), lkPick = () => LOOKS.find(l => l.id === lkSel.value);
+  if (lkSel) {
+    $('#lk-use').onclick = () => { const l = lkPick(); if (!l) { toast('Choose a saved look first'); return; } Object.assign(D, cleanSettings(JSON.parse(JSON.stringify(l.settings)))); FORM.spSig = null; renderFormBody(); toast('Look: ' + l.name); };
+    $('#lk-save').onclick = async () => {
+      const name = (prompt('Name this look (e.g. Gold wedding)', (lkPick() || {}).name || '') || '').trim().slice(0, 40); if (!name) return;
+      const same = LOOKS.find(l => l.name.toLowerCase() === name.toLowerCase());
+      if (same && !confirm('Replace the look “' + same.name + '”?')) return;
+      const look = { id: same ? same.id : uid(), name, settings: JSON.parse(JSON.stringify(D)) };
+      LOOKS = [...LOOKS.filter(l => l !== same), look].sort((a, b) => a.name.localeCompare(b.name)); await DB.put('kv', LOOKS, 'looks');
+      renderFormBody(); $('#lk-sel').value = look.id; toast('Look saved');
+    };
+    $('#lk-del').onclick = async () => { const l = lkPick(); if (!l) { toast('Choose a saved look first'); return; } if (!confirm('Delete the look “' + l.name + '”? Your events keep their settings.')) return; LOOKS = LOOKS.filter(x => x !== l); await DB.put('kv', LOOKS, 'looks'); renderFormBody(); toast('Look deleted'); };
+  }
   const mb = $('#mt-btn'); if (mb) mb.onclick = startMotionTest;
   $$('#f-body [data-th]').forEach(th => { const a = ASSETS[th.dataset.th]; if (!a) return; const isV = (a.blob.type || '').startsWith('video'); const el = document.createElement(isV ? 'video' : 'img'); el.src = URL.createObjectURL(a.blob); if (isV) { el.muted = true; el.playsInline = true; el.preload = 'metadata'; } th.appendChild(el); });
   $$('#f-body [data-rm]').forEach(b => b.onclick = () => { D.idleIds = (D.idleIds || []).filter(x => x !== b.dataset.rm); renderFormBody(); });
@@ -865,7 +901,7 @@ function renderPinCard() {
 
 /* ---------------- home ---------------- */
 const allEvents = async () => (await DB.all('events')).sort((a, b) => b.createdAt - a.createdAt);
-const APP_VERSION = '5.2';
+const APP_VERSION = '5.3';
 async function renderHome() {
   const evs = await allEvents();
   const rb = $('#h-resume'); rb.innerHTML = ''; const kid = localStorage.getItem('kiosk');
@@ -946,7 +982,7 @@ $('#hub-settings').onclick = () => openForm({
 $('#hub-copy').onclick = () => openNewEvent(CUR.id);
 $('#hub-rename').onclick = async () => { const n = prompt('Event name', CUR.name); if (n && n.trim()) { CUR.name = n.trim().slice(0, 60); await DB.put('events', CUR); openHub(CUR.id); } };
 $('#hub-delete').onclick = async () => {
-  const nClips = (await DB.byEvent(CUR.id)).length, safe = !nClips || (CUR.backupAt && CUR.backupCount >= nClips);
+  const nClips = (await DB.byEvent(CUR.id)).length, safe = BACKUP.isSafe(CUR, nClips);
   if (!confirm((safe ? '' : '⚠ This event is NOT backed up. Tap Cancel, then “Back up this event” first.\n\n') + 'Delete "' + CUR.name + '" and all its videos from this phone? This cannot be undone.')) return;
   for (const c of await DB.byEvent(CUR.id)) await DB.del('clips', c.id);
   await DB.del('events', CUR.id); await DB.del('kv', 'reel:' + CUR.id); showHome();
@@ -1497,7 +1533,8 @@ async function exitRequest() {
   if (navigator.vibrate) navigator.vibrate(60);
   if (S.pinHash) { if (!(await pinPrompt('Operator PIN', 'Enter your PIN to leave the booth.', verifyPin))) return; }
   else if (!confirm('Leave the booth?')) return;
-  stopBooth(); localStorage.removeItem('kiosk'); openHub(EV.id);
+  stopBooth(); localStorage.removeItem('kiosk'); await openHub(EV.id);
+  if (await DRIVE.autoBackupOn()) BACKUP.cloud(EV, true);
 }
 
 /* ---------------- review ---------------- */
@@ -1549,8 +1586,23 @@ $('#r-savelead').onclick = async () => {
 $('#r-back').onclick = () => $('#r-done').click();
 $('#r-done').onclick = () => {
   if (EV.settings.leadOn && EV.settings.leadRequired && !CLIP._leadSaved) { $('#r-err').textContent = 'Please add your details first.'; return; }
-  $('#r-video').pause(); show('booth'); afterReview();
+  $('#r-video').pause(); show('booth'); thanksThen(CLIP, afterReview);
 };
+function drawQR(cv, url, px = 8) {
+  const q = qrcode(0, 'M'); q.addData(url); q.make(); const n = q.getModuleCount(), quiet = 4, size = (n + quiet * 2) * px;
+  cv.width = cv.height = size; const g = cv.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, size, size); g.fillStyle = '#000';
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (q.isDark(r, c)) g.fillRect((c + quiet) * px, (r + quiet) * px, px, px);
+}
+function thanksThen(clip, next) {                 // guest thank-you screen, then back to the booth
+  const st = EV.settings, box = $('#b-thanks'); if (!st.thanksOn) { next(); return; }
+  const logo = ASSETS[st.logoId], img = $('#t-logo'); img.src = logo ? URL.createObjectURL(logo.blob) : 'logo.png';
+  $('#t-title').textContent = st.thanksTitle || ''; $('#t-text').textContent = st.thanksText || ''; $('#t-social').textContent = st.thanksSocial || '';
+  const url = st.thanksQR && clip && clip.driveUrl, cv = $('#t-qr'); cv.classList.toggle('hidden', !url); $('#t-qrnote').textContent = url ? 'Scan to download your video' : '';
+  if (url) drawQR(cv, url, 6);
+  box.classList.remove('hidden'); Motion.hold(((st.thanksSecs | 0) + 3) * 1000);
+  let done = false; const end = () => { if (done) return; done = true; clearTimeout(t); box.classList.add('hidden'); if (logo) URL.revokeObjectURL(img.src); next(); };
+  const t = setTimeout(end, (st.thanksSecs || 6) * 1000); box.onclick = end;
+}
 $('#r-retake').onclick = async () => { if (!confirm('Delete this video and retake?')) return; await DB.del('clips', CLIP.id); EV.clipCount = Math.max(0, EV.clipCount - 1); await DB.put('events', EV); $('#r-video').pause(); show('booth'); afterReview(); };
 function afterReview() { clearInterval(REV.t); if (B.stream) resumeWaiting(); else { bstatus(''); bphase('resume'); } }
 function resumeWaiting() { IDLE.last = performance.now(); bphase('waiting'); Motion.hold(EV.settings.cooldown * 1000); setProg(0); }
@@ -1615,44 +1667,70 @@ const BACKUP = (() => {
   const button = (label, fn) => { const b = el('bk-go'); b.textContent = label; b.disabled = false; b.onclick = fn; b.classList.remove('hidden'); };
   el('bk-close').onclick = () => el('bk-sheet').classList.remove('show');
 
+  const isSafe = (ev, n) => !n || (ev.backupAt && ev.backupCount >= n) || (ev.cloudAt && ev.cloudCount >= n);
   function status(ev, n) {
     const box = el('hub-bk'); if (!box) return;
     if (!n) { box.textContent = ''; box.style.color = ''; return; }
-    const extra = n - (ev.backupCount || 0);
-    box.textContent = !ev.backupAt ? 'Not backed up yet.' : extra > 0 ? `${extra} new video${extra > 1 ? 's' : ''} since the last backup (${fmtDate(ev.backupAt)}).` : `Backed up ${fmtDate(ev.backupAt)} · ${ev.backupCount} videos.`;
-    box.style.color = !ev.backupAt || extra > 0 ? 'var(--accent)' : 'var(--ok)';
+    const line = (at, cnt, where) => { const extra = n - (cnt || 0); return !at ? '' : extra > 0 ? `${where}: ${extra} new video${extra > 1 ? 's' : ''} since ${fmtDate(at)}.` : `${where}: backed up ${fmtDate(at)} · ${cnt} videos ✓`; };
+    const parts = [line(ev.backupAt, ev.backupCount, 'Backup file'), line(ev.cloudAt, ev.cloudCount, 'Google Drive')].filter(Boolean);
+    box.innerHTML = parts.length ? parts.map(esc).join('<br>') : 'Not backed up yet.';
+    box.style.color = isSafe(ev, n) ? 'var(--ok)' : 'var(--accent)';
   }
 
+  async function buildFile(ev) {
+    const clips = (await DB.byEvent(ev.id)).sort((a, b) => a.createdAt - b.createdAt), files = [];
+    const st = ev.settings || {}, assetIds = [st.borderId, st.logoId, st.musicId, ...(st.idleIds || [])].filter(Boolean);
+    const assets = []; for (const id of new Set(assetIds)) { const a = await DB.get('assets', id); if (a) assets.push(pack(a, files, 'look/' + (a.kind || 'file') + '-' + assets.length)); }
+    for (const l of LOOKS) for (const id of [l.settings.borderId, l.settings.logoId, l.settings.musicId, ...(l.settings.idleIds || [])]) if (id && !assetIds.includes(id)) { assetIds.push(id); const a = await DB.get('assets', id); if (a) assets.push(pack(a, files, 'look/' + (a.kind || 'file') + '-' + assets.length)); }
+    const reel = await DB.get('kv', 'reel:' + ev.id), defaults = await DB.get('kv', 'settings');
+    const m = { format: FORMAT, version: 1, app: APP_VERSION, createdAt: Date.now(),
+      event: pack(ev, files, 'event'),
+      clips: clips.map((c, i) => pack(c, files, 'videos/' + String(i + 1).padStart(3, '0'))),
+      assets, looks: LOOKS, reel: reel ? pack(reel, files, 'videos/000_highlight') : null, defaults: defaults ? pack(defaults, files, 'defaults') : null };
+    files.unshift({ name: 'backup.json', blob: new Blob([JSON.stringify(m)], { type: 'application/json' }) },
+      { name: 'READ ME.txt', blob: new Blob([`Party Machines 360 backup of "${ev.name}" (${clips.length} videos), made ${new Date().toLocaleString()}.\r\nTo restore: open the Party Machines Booth app, tap "Restore from backup file" on the home screen and pick this file.\r\nDo not unzip and re-zip it. The videos are also in the "videos" folder.\r\n`], { type: 'text/plain' }) });
+    const total = files.reduce((a, f) => a + f.blob.size, 0);
+    if (total > 3.9e9) throw new Error(`This event is ${fmtBytes(total)} — too big for one backup file (limit 3.9 GB). Ask Claude to add split backups.`);
+    const zip = await makeZip(files, (i, n) => prog(`Packing ${i + 1} of ${n} files…`, (i + 1) / n));
+    return { file: new File([zip], `PartyMachines-Backup_${baseName(ev)}.zip`, { type: 'application/zip' }), clips };
+  }
+  const markDone = async (ev, at, cnt, kind) => {
+    const fresh = (await DB.get('events', ev.id)) || ev; fresh[kind + 'At'] = at; fresh[kind + 'Count'] = cnt; await DB.put('events', fresh);
+    ev[kind + 'At'] = at; ev[kind + 'Count'] = cnt;
+    if (CUR && CUR.id === ev.id) { CUR[kind + 'At'] = at; CUR[kind + 'Count'] = cnt; status(CUR, (await DB.byEvent(ev.id)).length); }
+  };
   async function backup(ev) {
     sheet('Back up “' + ev.name + '”', 'Getting videos ready…', 'Keep the app open until this is done.');
     try {
-      const clips = (await DB.byEvent(ev.id)).sort((a, b) => a.createdAt - b.createdAt), files = [];
-      const st = ev.settings || {}, assetIds = [st.borderId, st.logoId, st.musicId, ...(st.idleIds || [])].filter(Boolean);
-      const assets = []; for (const id of new Set(assetIds)) { const a = await DB.get('assets', id); if (a) assets.push(pack(a, files, 'look/' + (a.kind || 'file') + '-' + assets.length)); }
-      const reel = await DB.get('kv', 'reel:' + ev.id), defaults = await DB.get('kv', 'settings');
-      const m = { format: FORMAT, version: 1, app: APP_VERSION, createdAt: Date.now(),
-        event: pack(ev, files, 'event'),
-        clips: clips.map((c, i) => pack(c, files, 'videos/' + String(i + 1).padStart(3, '0'))),
-        assets, reel: reel ? pack(reel, files, 'videos/000_highlight') : null, defaults: defaults ? pack(defaults, files, 'defaults') : null };
-      files.unshift({ name: 'backup.json', blob: new Blob([JSON.stringify(m)], { type: 'application/json' }) },
-        { name: 'READ ME.txt', blob: new Blob([`Party Machines 360 backup of "${ev.name}" (${clips.length} videos), made ${new Date().toLocaleString()}.\r\nTo restore: open the Party Machines Booth app, tap "Restore from backup file" on the home screen and pick this file.\r\nDo not unzip and re-zip it. The videos are also in the "videos" folder.\r\n`], { type: 'text/plain' }) });
-      const total = files.reduce((a, f) => a + f.blob.size, 0);
-      if (total > 3.9e9) throw new Error(`This event is ${fmtBytes(total)} — too big for one backup file (limit 3.9 GB). Ask Claude to add split backups.`);
-      const zip = await makeZip(files, (i, n) => prog(`Packing ${i + 1} of ${n} files…`, (i + 1) / n));
-      const file = new File([zip], `PartyMachines-Backup_${baseName(ev)}.zip`, { type: 'application/zip' });
+      const { file, clips } = await buildFile(ev);
       prog(`Backup ready · ${clips.length} videos · ${fmtBytes(file.size)}`, 1);
       el('bk-tip').innerHTML = 'Tap <b>Save backup file</b>, then pick <b>Save to Files → iCloud Drive</b>, or <b>AirDrop</b> it to your Mac.<br>Do not keep it only on this phone — if the phone is lost or the app icon is deleted, the backup must be somewhere else.';
       button('Save backup file', async () => {
         let saved = false;
         if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], title: file.name }); saved = true; } catch (e) { if (e.name === 'AbortError') return; } }
         if (!saved) { download(file, file.name); saved = true; }
-        ev.backupAt = Date.now(); ev.backupCount = clips.length; await DB.put('events', ev);
-        if (CUR && CUR.id === ev.id) { CUR.backupAt = ev.backupAt; CUR.backupCount = ev.backupCount; status(CUR, clips.length); }
+        await markDone(ev, Date.now(), clips.length, 'backup');
         prog('Backup saved ✓', 1); el('bk-go').classList.add('hidden');
       });
     } catch (e) { prog('Backup failed: ' + (e && e.message || e), 0); el('bk-tip').innerHTML = ''; console.warn('backup failed', e); }
   }
 
+  let cloudBusy = false;
+  async function cloud(ev, auto) {
+    if (cloudBusy) { el('bk-sheet').classList.add('show'); return; }
+    const n = (await DB.byEvent(ev.id)).length;
+    if (auto && (!n || (ev.cloudAt && ev.cloudCount >= n))) return;              // nothing new since the last Drive backup
+    cloudBusy = true;
+    sheet('Back up “' + ev.name + '” to Google Drive', 'Getting videos ready…', 'Keep the app open and the phone awake until it says done. You can close this panel.');
+    try {
+      const { file, clips } = await buildFile(ev);
+      await DRIVE.putBackup(file, f => prog(`Uploading to Google Drive… ${Math.round(f * 100)}% of ${fmtBytes(file.size)}`, f));
+      await markDone(ev, Date.now(), clips.length, 'cloud');
+      prog('Saved to Google Drive ✓', 1);
+      el('bk-tip').innerHTML = 'It is in Google Drive → <b>Party Machines 360 → Backups (private)</b>. Only you can see it.<br>To restore on a phone: download it from Drive to Files, then tap <b>Restore from backup file</b>.';
+    } catch (e) { prog('Google Drive backup failed: ' + (e && e.message || e), 0); el('bk-tip').innerHTML = 'Your videos are still safe on this phone. Try again on good Wi-Fi, or use “Back up this event (one file)”.'; console.warn('cloud backup failed', e); }
+    finally { cloudBusy = false; }
+  }
   async function restoreOne(file, i, n) {
     const tag = n > 1 ? ` (file ${i + 1} of ${n})` : '';
     const get = await openZip(file), mf = await get('backup.json');
@@ -1668,6 +1746,7 @@ const BACKUP = (() => {
       if (await DB.get('clips', c.id)) { had++; continue; }       // already on this phone: keep it, never overwrite
       await DB.put('clips', await unpack(c, get)); added++;
     }
+    if (Array.isArray(m.looks)) { const have = new Set(LOOKS.map(l => l.id)), add = m.looks.filter(l => !have.has(l.id)); if (add.length) { LOOKS = [...LOOKS, ...add].sort((a, b) => a.name.localeCompare(b.name)); await DB.put('kv', LOOKS, 'looks'); } }
     if (m.reel && !(await DB.get('kv', 'reel:' + evId))) await DB.put('kv', await unpack(m.reel, get), 'reel:' + evId);
     if (m.defaults && !(await DB.get('kv', 'settings'))) { await DB.put('kv', await unpack(m.defaults, get), 'settings'); await loadSettings(); }
     const ev = (await DB.get('events', evId)) || { ...(await unpack(m.event, get)), backupAt: m.createdAt, backupCount: m.clips.length };   // the file it came from is a backup
@@ -1691,9 +1770,10 @@ const BACKUP = (() => {
     }
     renderHome();
   }
-  return { backup, restore, status, openZip };
+  return { backup, cloud, restore, status, isSafe, openZip };
 })();
 $('#hub-backup').onclick = () => BACKUP.backup(CUR);
+$('#hub-cloud').onclick = () => BACKUP.cloud(CUR);
 $('#h-restore').onclick = () => $('#h-restore-file').click();
 $('#h-restore-file').onchange = e => { const f = e.target.files; BACKUP.restore(f).finally(() => { e.target.value = ''; }); };
 
@@ -1795,11 +1875,20 @@ async function openVideos() {
   const a = $('#ev-actions'); a.innerHTML = `<h2 style="margin:0">Save &amp; export</h2>
     ${batches.map((b, i) => `<button class="btn primary" data-batch="${i}">Save to Photos — videos ${b.from}–${b.to}${b.files > b.length ? ' (' + b.files + ' files)' : ''}</button>`).join('') || '<div class="sub">No videos yet. Go back and tap Start recording.</div>'}
     ${n ? '<div class="sub">Pick “Save Video” in the share sheet. iPhone shares a few videos at a time, so there is one button per batch.</div>' : ''}
+    <button class="btn hidden" id="ev-gallery" ${n ? '' : 'disabled'}>Event gallery QR — all videos</button>
+    <div class="sub" id="ev-galmsg"></div>
     <button class="btn" id="ev-zip" ${n ? '' : 'disabled'}>Export all videos (.zip)</button>
     <button class="btn" id="ev-csv" ${CUR_CLIPS.some(c => c.lead) ? '' : 'disabled'}>Export leads (.csv)</button>`;
   $$('[data-batch]', a).forEach(b => b.onclick = async () => { const files = batches[+b.dataset.batch].flatMap(c => clipFiles(c, CUR)); if (await shareFiles(files, CUR.name)) { for (const c of batches[+b.dataset.batch]) { c.deliveries.push({ kind: 'photos', at: Date.now() }); await DB.put('clips', c); } toast('Done'); } else toast('Sharing isn’t available here — use the .zip'); });
   $('#ev-zip').onclick = () => exportZip(CUR, CUR_CLIPS);
   $('#ev-csv').onclick = () => exportLeads(CUR, CUR_CLIPS);
+  DRIVE.isReady().then(ok => { const g = $('#ev-gallery'); if (g) g.classList.toggle('hidden', !ok); });
+  $('#ev-gallery').onclick = async () => {
+    const b = $('#ev-gallery'), m = $('#ev-galmsg'), ev = CUR; b.disabled = true; m.textContent = 'Getting the gallery ready…';
+    try { const url = await DRIVE.gallery(ev, CUR_CLIPS, t => { m.textContent = t; }); m.textContent = 'Anyone with this QR code sees every video of this event.'; DRIVE.showQR(url, 'Scan to see all videos · ' + ev.name); }
+    catch (e) { m.textContent = (e && e.message) || 'Could not make the gallery.'; }
+    finally { b.disabled = false; }
+  };
   renderReelBox(); renderGrid(); show('videos'); upgradeThumbs(CUR_CLIPS);
 }
 async function renderReelBox() {
@@ -1947,10 +2036,8 @@ const DRIVE = (() => {
     UP[clip.id] = { p, subs }; p.then(() => { delete UP[clip.id]; }, () => { delete UP[clip.id]; });
     return p;
   }
-  function showQR(url) {
-    const q = qrcode(0, 'M'); q.addData(url); q.make(); const n = q.getModuleCount(), px = 8, quiet = 4, size = (n + quiet * 2) * px, cv = $('#qr-canvas');
-    cv.width = cv.height = size; const g = cv.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, size, size); g.fillStyle = '#000';
-    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (q.isDark(r, c)) g.fillRect((c + quiet) * px, (r + quiet) * px, px, px);
+  function showQR(url, title = 'Scan to get your video') {
+    drawQR($('#qr-canvas'), url); $('#qr-title').textContent = title;
     $('#qr-link').textContent = url; $('#qr-modal').classList.add('show');
     $('#qr-copy').onclick = async () => { try { await navigator.clipboard.writeText(url); toast('Link copied'); } catch { toast('Press and hold the link to copy'); } };
   }
@@ -1970,7 +2057,7 @@ const DRIVE = (() => {
   /* settings sheet */
   const stat = (cls, t, d) => { $('#dr-stat').className = 'ledstat ' + cls; $('#dr-stat-t').textContent = t; $('#dr-stat-d').textContent = d || ''; };
   const refreshStat = () => cfg.worker ? stat('on', 'Always signed in', 'Using your Cloudflare helper — no sign-in needed.') : !cfg.clientId ? stat('', 'Not set up', 'Follow the one-time Google setup below.') : valid() ? stat('on', 'Signed in', 'Videos can be uploaded.') : stat('warn', 'Sign in needed', 'Tap “Save & sign in”. Google sign-in lasts about an hour.');
-  async function openSheet() { await load(); $('#dr-id').value = cfg.clientId || ''; $('#dr-auto').checked = !!cfg.auto; $('#dr-msg').textContent = ''; $('#dr-wurl').value = cfg.worker || ''; $('#dr-wkey').value = cfg.workerKey || ''; $('#dr-help').open = !ready(); refreshStat(); $('#dr-sheet').classList.add('show'); if (online()) gis().catch(() => {}); }
+  async function openSheet() { await load(); $('#dr-id').value = cfg.clientId || ''; $('#dr-auto').checked = !!cfg.auto; $('#dr-autobk').checked = !!cfg.autoBackup; $('#dr-msg').textContent = ''; $('#dr-wurl').value = cfg.worker || ''; $('#dr-wkey').value = cfg.workerKey || ''; $('#dr-help').open = !ready(); refreshStat(); $('#dr-sheet').classList.add('show'); if (online()) gis().catch(() => {}); }
   $('#h-drive').onclick = openSheet; $('#dr-close').onclick = () => $('#dr-sheet').classList.remove('show');
   $('#dr-auto').onchange = async () => { cfg.auto = $('#dr-auto').checked; await save(); };
   $('#dr-signin').onclick = async () => {
@@ -1999,6 +2086,31 @@ const DRIVE = (() => {
     try { await token(); const f = await mkFolder('Party Machines test'); await api('files/' + f, { method: 'DELETE' }).catch(() => {}); m.textContent = 'Works — Google Drive is connected.'; }
     catch (e) { m.textContent = e.message + (e.body ? ' — ' + e.body : ''); } refreshStat();
   };
+  /* event gallery: share the whole event folder, uploading any videos that are not there yet */
+  async function gallery(ev, clips, msg) {
+    await load(); if (!ready()) throw new Error('Set up Online QR first (Home → Online QR).'); if (!online()) throw new Error('No internet right now.');
+    for (let attempt = 0; ; attempt++) {
+      try {
+        const folder = await eventFolder(ev); cfg.shared = cfg.shared || {};
+        if (!cfg.shared[folder]) { await api('files/' + folder + '/permissions', { method: 'POST', body: JSON.stringify({ role: 'reader', type: 'anyone' }) }); cfg.shared[folder] = 1; await save(); }
+        const todo = clips.filter(c => !c.driveUrl);
+        for (const [i, c] of todo.entries()) await ensureLink(c, ev, f => msg(`Uploading video ${i + 1} of ${todo.length}… ${Math.round(f * 100)}%`));
+        return 'https://drive.google.com/drive/folders/' + folder;
+      } catch (e) { if (attempt === 0 && e.status === 404) { cfg.rootId = ''; cfg.events = {}; await save(); continue; } throw e; }
+    }
+  }
+  /* backups go in a private folder that is never shared */
+  async function putBackup(file, onp) {
+    await load(); if (!ready()) throw new Error('Set up Online QR first (Home → Online QR).'); if (!online()) throw new Error('No internet right now.');
+    for (let attempt = 0; ; attempt++) {
+      try {
+        if (!cfg.rootId) { cfg.rootId = await mkFolder('Party Machines 360'); await save(); }
+        if (!cfg.backupsId) { cfg.backupsId = await mkFolder('Backups (private)', cfg.rootId); await save(); }
+        await putFile(file, cfg.backupsId, onp); return;
+      } catch (e) { if (attempt === 0 && e.status === 404) { cfg.rootId = ''; cfg.backupsId = ''; cfg.events = {}; await save(); continue; } throw e; }
+    }
+  }
+  $('#dr-autobk').onchange = async () => { cfg.autoBackup = $('#dr-autobk').checked; await save(); };
   async function modalButton(c) { await load(); $('#m-qr').classList.toggle('hidden', !!c.reel || !ready()); }
   $('#m-qr').onclick = async () => {
     const b = $('#m-qr'); if (!MODAL || !CUR) return;
@@ -2009,7 +2121,9 @@ const DRIVE = (() => {
     finally { b.disabled = false; b.textContent = 'QR code'; }
   };
   return {
-    updateButton, modalButton,
+    updateButton, modalButton, gallery, putBackup, showQR,
+    isReady: async () => { await load(); return ready(); },
+    autoBackupOn: async () => { await load(); return !!cfg.autoBackup && ready() && online(); },
     /* called right after a video is saved: upload quietly if automatic upload is on and we are signed in */
     async autoUpload(clip, ev) { try { await load(); if (!cfg.auto || !ready() || !(cfg.worker || valid()) || !online()) return; await ensureLink(clip, ev); } catch (e) { console.warn('auto upload failed', e); } },
   };
