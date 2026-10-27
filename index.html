@@ -224,9 +224,9 @@ details.past .list-item{margin-top:8px;background:var(--panel2)}
 .ledbtn i{position:absolute;right:3px;bottom:3px;width:12px;height:12px;border-radius:50%;background:var(--mut);border:2px solid var(--bg)}
 .ledbtn.on i{background:var(--ok)}.ledbtn.busy i{background:var(--blue);animation:blink 1s infinite}.ledbtn.warn i{background:var(--accent)}
 .ledbtn.on svg{stroke:var(--ok)}
-#dr-sheet,#qr-modal{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.6);display:none;align-items:flex-end}
-#dr-sheet.show,#qr-modal.show{display:flex}
-#dr-sheet .panel,#qr-modal .panel{background:var(--bg);border:1px solid var(--line);border-radius:24px 24px 0 0;width:100%;max-height:92vh;overflow-y:auto;padding:18px 18px calc(env(safe-area-inset-bottom) + 24px);display:flex;flex-direction:column;gap:12px}
+#dr-sheet,#qr-modal,#bk-sheet{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.6);display:none;align-items:flex-end}
+#dr-sheet.show,#qr-modal.show,#bk-sheet.show{display:flex}
+#dr-sheet .panel,#qr-modal .panel,#bk-sheet .panel{background:var(--bg);border:1px solid var(--line);border-radius:24px 24px 0 0;width:100%;max-height:92vh;overflow-y:auto;padding:18px 18px calc(env(safe-area-inset-bottom) + 24px);display:flex;flex-direction:column;gap:12px}
 #qr-modal{z-index:70;align-items:center;justify-content:center}
 #qr-modal .panel{border-radius:24px;max-width:380px;align-items:center;text-align:center}
 #qr-canvas{width:min(78vw,300px);height:min(78vw,300px);image-rendering:pixelated;border-radius:12px;background:#fff}
@@ -262,6 +262,8 @@ details.past .list-item{margin-top:8px;background:var(--panel2)}
     <summary><span>Past events <span class="sub" id="h-count"></span></span></summary>
     <div id="h-list"></div>
   </details>
+  <button class="btn ghost" id="h-restore">Restore from backup file</button>
+  <input type="file" id="h-restore-file" accept=".zip,application/zip" multiple hidden>
   <div class="sub" id="h-storage"></div>
   <div class="sub" id="h-install"></div>
   <div class="sub" style="display:flex;gap:10px;align-items:center;justify-content:space-between"><span id="h-ver"></span><button class="back" id="h-update" style="padding:6px 12px;font-size:13px">Update app</button></div>
@@ -291,6 +293,8 @@ details.past .list-item{margin-top:8px;background:var(--panel2)}
     <button class="btn" id="hub-settings">Event settings</button>
     <button class="btn" id="hub-copy">Copy settings to a new event</button>
     <button class="btn" id="hub-rename">Rename</button>
+    <button class="btn" id="hub-backup">Back up this event (one file)</button>
+    <div class="sub" id="hub-bk"></div>
     <button class="btn danger" id="hub-delete">Delete event</button>
   </div>
 </div></section>
@@ -434,6 +438,13 @@ details.past .list-item{margin-top:8px;background:var(--panel2)}
       <li>Copy the <b>Client ID</b> it shows and paste it above.</li>
     </ol>
   </details>
+</div></div>
+<div id="bk-sheet"><div class="panel">
+  <div class="top" style="display:flex;align-items:center"><h1 style="flex:1;font-size:22px" id="bk-title">Backup</h1><button class="back" id="bk-close">Close</button></div>
+  <div id="bk-msg" style="font-weight:700"></div>
+  <div class="meter"><i id="bk-bar"></i></div>
+  <button class="btn primary big hidden" id="bk-go"></button>
+  <div class="sub" id="bk-tip"></div>
 </div></div>
 <div id="qr-modal"><div class="panel">
   <h2 style="margin:0">Scan to get your video</h2>
@@ -854,7 +865,7 @@ function renderPinCard() {
 
 /* ---------------- home ---------------- */
 const allEvents = async () => (await DB.all('events')).sort((a, b) => b.createdAt - a.createdAt);
-const APP_VERSION = '5.1';
+const APP_VERSION = '5.2';
 async function renderHome() {
   const evs = await allEvents();
   const rb = $('#h-resume'); rb.innerHTML = ''; const kid = localStorage.getItem('kiosk');
@@ -922,6 +933,7 @@ async function openHub(id) {
   const clips = await DB.byEvent(id);
   $('#hub-title').textContent = CUR.name; $('#hub-sub').textContent = 'Created ' + fmtDate(CUR.createdAt);
   $('#hub-count').textContent = '(' + clips.length + ')';
+  BACKUP.status(CUR, clips.length);
   show('hub');
 }
 $('#hub-record').onclick = () => enterBooth(CUR.id);
@@ -934,7 +946,8 @@ $('#hub-settings').onclick = () => openForm({
 $('#hub-copy').onclick = () => openNewEvent(CUR.id);
 $('#hub-rename').onclick = async () => { const n = prompt('Event name', CUR.name); if (n && n.trim()) { CUR.name = n.trim().slice(0, 60); await DB.put('events', CUR); openHub(CUR.id); } };
 $('#hub-delete').onclick = async () => {
-  if (!confirm('Delete "' + CUR.name + '" and all its videos from this phone? This cannot be undone.')) return;
+  const nClips = (await DB.byEvent(CUR.id)).length, safe = !nClips || (CUR.backupAt && CUR.backupCount >= nClips);
+  if (!confirm((safe ? '' : '⚠ This event is NOT backed up. Tap Cancel, then “Back up this event” first.\n\n') + 'Delete "' + CUR.name + '" and all its videos from this phone? This cannot be undone.')) return;
   for (const c of await DB.byEvent(CUR.id)) await DB.del('clips', c.id);
   await DB.del('events', CUR.id); await DB.del('kv', 'reel:' + CUR.id); showHome();
 };
@@ -1168,17 +1181,18 @@ async function makeThumb(blob, at = 3) {
 /* ---------------- zip (store only — video is already compressed) ---------------- */
 const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
 const crc32 = u8 => { let c = 0xFFFFFFFF; for (let i = 0; i < u8.length; i++) c = CRC[(c ^ u8[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
-async function makeZip(files) {
-  const parts = [], central = []; let offset = 0; const enc = new TextEncoder();
+async function makeZip(files, onProg) {
+  const parts = [], central = []; let offset = 0, i = 0; const enc = new TextEncoder();
   const now = new Date(), dosT = (now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1), dosD = ((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate();
   for (const f of files) {
-    const data = new Uint8Array(await f.blob.arrayBuffer()), name = enc.encode(f.name), crc = crc32(data);
+    if (onProg) onProg(i++, files.length);
+    const size = f.blob.size, name = enc.encode(f.name), crc = crc32(new Uint8Array(await f.blob.arrayBuffer()));   // read once for the checksum, then keep only the reference
     const lh = new DataView(new ArrayBuffer(30)); lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true); lh.setUint16(8, 0, true);
-    lh.setUint16(10, dosT, true); lh.setUint16(12, dosD, true); lh.setUint32(14, crc, true); lh.setUint32(18, data.length, true); lh.setUint32(22, data.length, true); lh.setUint16(26, name.length, true);
-    parts.push(lh.buffer, name, data);
+    lh.setUint16(10, dosT, true); lh.setUint16(12, dosD, true); lh.setUint32(14, crc, true); lh.setUint32(18, size, true); lh.setUint32(22, size, true); lh.setUint16(26, name.length, true);
+    parts.push(lh.buffer, name, f.blob);
     const ch = new DataView(new ArrayBuffer(46)); ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true);
-    ch.setUint16(12, dosT, true); ch.setUint16(14, dosD, true); ch.setUint32(16, crc, true); ch.setUint32(20, data.length, true); ch.setUint32(24, data.length, true); ch.setUint16(28, name.length, true); ch.setUint32(42, offset, true);
-    central.push(ch.buffer, name); offset += 30 + name.length + data.length;
+    ch.setUint16(12, dosT, true); ch.setUint16(14, dosD, true); ch.setUint32(16, crc, true); ch.setUint32(20, size, true); ch.setUint32(24, size, true); ch.setUint16(28, name.length, true); ch.setUint32(42, offset, true);
+    central.push(ch.buffer, name); offset += 30 + name.length + size;
   }
   const csize = central.reduce((a, b) => a + (b.byteLength ?? b.length), 0);
   const end = new DataView(new ArrayBuffer(22)); end.setUint32(0, 0x06054b50, true); end.setUint16(8, files.length, true); end.setUint16(10, files.length, true); end.setUint32(12, csize, true); end.setUint32(16, offset, true);
@@ -1555,6 +1569,133 @@ function exportLeads(ev, clips) {
   const f = new File([['email,whatsapp,consent_marketing,captured_at,clip_id', ...rows].join('\n')], baseName(ev) + '_leads.csv', { type: 'text/csv' });
   shareFiles([f], 'Leads').then(ok => ok || download(f, f.name));
 }
+
+/* ---------------- backup & restore: one .zip per event (videos + settings + leads + photos/music) ---------------- */
+const BACKUP = (() => {
+  const FORMAT = 'party-machines-backup', el = id => document.getElementById(id);
+  const extFor = t => ({ 'video/mp4': 'mp4', 'video/webm': 'webm', 'video/quicktime': 'mov', 'image/jpeg': 'jpg', 'image/png': 'png', 'image/gif': 'gif', 'image/webp': 'webp', 'audio/mpeg': 'mp3', 'audio/mp4': 'm4a', 'audio/x-m4a': 'm4a', 'audio/wav': 'wav' })[(t || '').split(';')[0]] || 'bin';
+  // every video / photo / sound inside a record becomes its own file in the zip; the record keeps a pointer to it
+  const pack = (v, files, path) => {
+    if (v instanceof Blob) { const name = path + '.' + extFor(v.type); files.push({ name, blob: v }); return { __file: name, type: v.type || '' }; }
+    if (Array.isArray(v)) return v.map((x, i) => pack(x, files, path + '-' + i));
+    if (v && typeof v === 'object') { const o = {}; for (const k in v) o[k] = pack(v[k], files, path + '_' + k); return o; }
+    return v;
+  };
+  const unpack = async (v, get) => {
+    if (Array.isArray(v)) { const out = []; for (const x of v) out.push(await unpack(x, get)); return out; }
+    if (v && typeof v === 'object') {
+      if (v.__file) { const b = await get(v.__file, v.type); if (!b) throw new Error('missing ' + v.__file); return b; }
+      const o = {}; for (const k in v) o[k] = await unpack(v[k], get); return o;
+    }
+    return v;
+  };
+  // read our own (store-only) zip straight from the file, one piece at a time, so a 1 GB backup never sits in memory
+  async function openZip(file) {
+    if (file.size < 22) throw new Error('This is not a backup file.');
+    const end = new DataView(await file.slice(file.size - 22).arrayBuffer());
+    if (end.getUint32(0, true) !== 0x06054b50) throw new Error('This is not a Party Machines backup file (or it was changed after saving).');
+    const n = end.getUint16(10, true), cofs = end.getUint32(16, true), cd = new DataView(await file.slice(cofs, cofs + end.getUint32(12, true)).arrayBuffer());
+    const dec = new TextDecoder(), list = {};
+    for (let p = 0, i = 0; i < n; i++) {
+      const nl = cd.getUint16(p + 28, true), name = dec.decode(new Uint8Array(cd.buffer, p + 46, nl));
+      list[name] = { method: cd.getUint16(p + 10, true), size: cd.getUint32(p + 24, true), ofs: cd.getUint32(p + 42, true) };
+      p += 46 + nl + cd.getUint16(p + 30, true) + cd.getUint16(p + 32, true);
+    }
+    return async (name, type = '') => {
+      const e = list[name]; if (!e) return null;
+      if (e.method !== 0) throw new Error('This backup was re-zipped on a computer. Use the original backup file.');
+      const lh = new DataView(await file.slice(e.ofs, e.ofs + 30).arrayBuffer()), start = e.ofs + 30 + lh.getUint16(26, true) + lh.getUint16(28, true);
+      return file.slice(start, start + e.size, type);
+    };
+  }
+
+  /* sheet */
+  const sheet = (title, msg, tip = '') => { el('bk-title').textContent = title; el('bk-msg').textContent = msg; el('bk-tip').innerHTML = tip; el('bk-bar').style.width = '0'; el('bk-go').classList.add('hidden'); el('bk-sheet').classList.add('show'); };
+  const prog = (msg, f) => { el('bk-msg').textContent = msg; el('bk-bar').style.width = Math.round(f * 100) + '%'; };
+  const button = (label, fn) => { const b = el('bk-go'); b.textContent = label; b.disabled = false; b.onclick = fn; b.classList.remove('hidden'); };
+  el('bk-close').onclick = () => el('bk-sheet').classList.remove('show');
+
+  function status(ev, n) {
+    const box = el('hub-bk'); if (!box) return;
+    if (!n) { box.textContent = ''; box.style.color = ''; return; }
+    const extra = n - (ev.backupCount || 0);
+    box.textContent = !ev.backupAt ? 'Not backed up yet.' : extra > 0 ? `${extra} new video${extra > 1 ? 's' : ''} since the last backup (${fmtDate(ev.backupAt)}).` : `Backed up ${fmtDate(ev.backupAt)} · ${ev.backupCount} videos.`;
+    box.style.color = !ev.backupAt || extra > 0 ? 'var(--accent)' : 'var(--ok)';
+  }
+
+  async function backup(ev) {
+    sheet('Back up “' + ev.name + '”', 'Getting videos ready…', 'Keep the app open until this is done.');
+    try {
+      const clips = (await DB.byEvent(ev.id)).sort((a, b) => a.createdAt - b.createdAt), files = [];
+      const st = ev.settings || {}, assetIds = [st.borderId, st.logoId, st.musicId, ...(st.idleIds || [])].filter(Boolean);
+      const assets = []; for (const id of new Set(assetIds)) { const a = await DB.get('assets', id); if (a) assets.push(pack(a, files, 'look/' + (a.kind || 'file') + '-' + assets.length)); }
+      const reel = await DB.get('kv', 'reel:' + ev.id), defaults = await DB.get('kv', 'settings');
+      const m = { format: FORMAT, version: 1, app: APP_VERSION, createdAt: Date.now(),
+        event: pack(ev, files, 'event'),
+        clips: clips.map((c, i) => pack(c, files, 'videos/' + String(i + 1).padStart(3, '0'))),
+        assets, reel: reel ? pack(reel, files, 'videos/000_highlight') : null, defaults: defaults ? pack(defaults, files, 'defaults') : null };
+      files.unshift({ name: 'backup.json', blob: new Blob([JSON.stringify(m)], { type: 'application/json' }) },
+        { name: 'READ ME.txt', blob: new Blob([`Party Machines 360 backup of "${ev.name}" (${clips.length} videos), made ${new Date().toLocaleString()}.\r\nTo restore: open the Party Machines Booth app, tap "Restore from backup file" on the home screen and pick this file.\r\nDo not unzip and re-zip it. The videos are also in the "videos" folder.\r\n`], { type: 'text/plain' }) });
+      const total = files.reduce((a, f) => a + f.blob.size, 0);
+      if (total > 3.9e9) throw new Error(`This event is ${fmtBytes(total)} — too big for one backup file (limit 3.9 GB). Ask Claude to add split backups.`);
+      const zip = await makeZip(files, (i, n) => prog(`Packing ${i + 1} of ${n} files…`, (i + 1) / n));
+      const file = new File([zip], `PartyMachines-Backup_${baseName(ev)}.zip`, { type: 'application/zip' });
+      prog(`Backup ready · ${clips.length} videos · ${fmtBytes(file.size)}`, 1);
+      el('bk-tip').innerHTML = 'Tap <b>Save backup file</b>, then pick <b>Save to Files → iCloud Drive</b>, or <b>AirDrop</b> it to your Mac.<br>Do not keep it only on this phone — if the phone is lost or the app icon is deleted, the backup must be somewhere else.';
+      button('Save backup file', async () => {
+        let saved = false;
+        if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], title: file.name }); saved = true; } catch (e) { if (e.name === 'AbortError') return; } }
+        if (!saved) { download(file, file.name); saved = true; }
+        ev.backupAt = Date.now(); ev.backupCount = clips.length; await DB.put('events', ev);
+        if (CUR && CUR.id === ev.id) { CUR.backupAt = ev.backupAt; CUR.backupCount = ev.backupCount; status(CUR, clips.length); }
+        prog('Backup saved ✓', 1); el('bk-go').classList.add('hidden');
+      });
+    } catch (e) { prog('Backup failed: ' + (e && e.message || e), 0); el('bk-tip').innerHTML = ''; console.warn('backup failed', e); }
+  }
+
+  async function restoreOne(file, i, n) {
+    const tag = n > 1 ? ` (file ${i + 1} of ${n})` : '';
+    const get = await openZip(file), mf = await get('backup.json');
+    if (!mf) throw new Error('“' + file.name + '” is not a Party Machines backup.');
+    const m = JSON.parse(await mf.text());
+    if (m.format !== FORMAT) throw new Error('“' + file.name + '” is not a Party Machines backup.');
+    try { const est = await navigator.storage.estimate(), free = (est.quota || 0) - (est.usage || 0); if (est.quota && free < file.size * 1.05) throw new Error(`Not enough space: this backup needs ${fmtBytes(file.size)}, the app has ${fmtBytes(free)} free.`); } catch (e) { if (/space/.test(e.message)) throw e; }
+    const evId = m.event.id;
+    for (const a of m.assets || []) if (!(await DB.get('assets', a.id))) await DB.put('assets', await unpack(a, get));
+    let added = 0, had = 0;
+    for (const [k, c] of m.clips.entries()) {
+      prog(`Restoring video ${k + 1} of ${m.clips.length}${tag}…`, (k + 1) / m.clips.length);
+      if (await DB.get('clips', c.id)) { had++; continue; }       // already on this phone: keep it, never overwrite
+      await DB.put('clips', await unpack(c, get)); added++;
+    }
+    if (m.reel && !(await DB.get('kv', 'reel:' + evId))) await DB.put('kv', await unpack(m.reel, get), 'reel:' + evId);
+    if (m.defaults && !(await DB.get('kv', 'settings'))) { await DB.put('kv', await unpack(m.defaults, get), 'settings'); await loadSettings(); }
+    const ev = (await DB.get('events', evId)) || { ...(await unpack(m.event, get)), backupAt: m.createdAt, backupCount: m.clips.length };   // the file it came from is a backup
+    ev.clipCount = (await DB.byEvent(evId)).length; await DB.put('events', ev);
+    return { ev, added, had };
+  }
+  async function restore(files) {
+    files = [...files]; if (!files.length) return;
+    sheet('Restore backup', 'Reading backup…', 'Keep the app open until this is done.');
+    const done = [];
+    try {
+      for (const [i, f] of files.entries()) done.push(await restoreOne(f, i, files.length));
+      await loadAssets();
+      try { if (navigator.storage && navigator.storage.persist) await navigator.storage.persist(); } catch {}
+      prog('Restore finished ✓', 1);
+      el('bk-tip').innerHTML = done.map(r => `<b>${esc(r.ev.name)}</b>: ${r.added} video${r.added === 1 ? '' : 's'} added${r.had ? `, ${r.had} were already here` : ''}.`).join('<br>');
+      if (done.length === 1) button('Open event', () => { el('bk-sheet').classList.remove('show'); openHub(done[0].ev.id); });
+    } catch (e) {
+      prog('Restore stopped: ' + (e && e.message || e), 0); el('bk-tip').innerHTML = ''; console.warn('restore failed', e);
+      if (done.length) el('bk-tip').innerHTML = 'Already restored: ' + done.map(r => esc(r.ev.name)).join(', ');
+    }
+    renderHome();
+  }
+  return { backup, restore, status, openZip };
+})();
+$('#hub-backup').onclick = () => BACKUP.backup(CUR);
+$('#h-restore').onclick = () => $('#h-restore-file').click();
+$('#h-restore-file').onchange = e => { const f = e.target.files; BACKUP.restore(f).finally(() => { e.target.value = ''; }); };
 
 /* ---------------- ready check ---------------- */
 const RD_ROWS = [
@@ -2034,7 +2175,7 @@ const LED = (() => {
 })();
 LED.init();
 
-window.PM = { renderClip, renderReel, makeZip, makeThumb, openVideo, DEFAULTS, MIME, audioCtx };
+window.PM = { renderClip, renderReel, makeZip, BACKUP, makeThumb, openVideo, DEFAULTS, MIME, audioCtx };
 </script>
 </body>
 </html>
