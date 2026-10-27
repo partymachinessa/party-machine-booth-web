@@ -3,6 +3,7 @@
 // 2. Shows guests a Party Machines page for their video (instead of a plain Google Drive folder), and streams the video from your Drive.
 // Variables in Cloudflare: CLIENT_ID, CLIENT_SECRET, BOOTH_KEY. The Google login is kept in the BOOTH storage (KV);
 // REFRESH_TOKEN is only the old fallback. To reconnect Google open  https://<this-worker>/auth?key=BOOTH_KEY  and approve.
+// 3. "Party Machines Cloud": a booth only needs a booth code (stored in KV as code:<CODE>) to upload — no Google setup on the phone.
 const SCOPE = 'https://www.googleapis.com/auth/drive.file';
 const ALLOWED = ['https://partymachinessa.github.io'];
 const SITE = 'https://partymachinessa.github.io/party-machine-booth-web/';
@@ -30,6 +31,65 @@ async function drive(env, path) {
 }
 const isPublic = async (env, id) => (await drive(env, `files/${id}/permissions?fields=permissions(type,role)`)).permissions.some(p => p.type === 'anyone');
 const info = async (env, id) => { try { return JSON.parse((await drive(env, `files/${id}?fields=description`)).description || '{}'); } catch { return {}; } };
+
+/* ---------- Party Machines Cloud: booths upload with just a booth code ---------- */
+async function gjson(env, path, method = 'GET', body) {
+  const t = await accessToken(env); if (!t.access_token) throw Object.assign(new Error('google'), { status: 503, google: true });
+  const r = await fetch(DRIVE + path, { method, headers: { Authorization: 'Bearer ' + t.access_token, 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+  if (!r.ok) throw Object.assign(new Error('drive ' + r.status), { status: r.status });
+  return r.json();
+}
+const folderOf = async (env, name, parent) => (await gjson(env, 'files?fields=id', 'POST', { name, mimeType: 'application/vnd.google-apps.folder', ...(parent ? { parents: [parent] } : {}) })).id;
+const makePublic = (env, id) => gjson(env, `files/${id}/permissions`, 'POST', { role: 'reader', type: 'anyone' });
+async function own(env, code, id) { if (id) await env.BOOTH.put('owner:' + id, code); return id; }
+async function exists(env, id) { try { const f = await gjson(env, `files/${id}?fields=id,trashed`); return !f.trashed; } catch (e) { if (e.status === 404) return false; throw e; } }
+async function clientFolder(env, code, c) {
+  let root = await env.BOOTH.get('root');
+  if (!root || !(await exists(env, root))) { root = await folderOf(env, 'Party Machines 360 Cloud'); await env.BOOTH.put('root', root); }
+  if (!c.folder || !(await exists(env, c.folder))) { c.folder = await own(env, code, await folderOf(env, c.name || code, root)); await env.BOOTH.put('code:' + code, JSON.stringify(c)); }
+  return c.folder;
+}
+async function cloudApi(env, path, req, base) {
+  const body = req.method === 'POST' ? await req.json().catch(() => ({})) : Object.fromEntries(new URL(req.url).searchParams);
+  const code = String(body.code || '').trim().toUpperCase(), raw = code && await env.BOOTH.get('code:' + code);
+  if (!raw) return { status: 403, json: { error: 'bad_code', message: 'That booth code is not valid.' } };
+  const c = JSON.parse(raw); if (c.active === false) return { status: 403, json: { error: 'inactive', message: 'This booth code is switched off. Contact Party Machines.' } };
+  const mine = async id => id && (await env.BOOTH.get('owner:' + id)) === code;
+  if (path === 'health') { const t = await accessToken(env); return { json: { ok: !!t.access_token, name: c.name || '', error: t.access_token ? '' : 'google' } }; }
+  if (path === 'event') {                                  // one folder per event; its description feeds the guest page
+    const key = `ev:${code}:${body.eventId}`, rec = JSON.parse((await env.BOOTH.get(key)) || '{}');
+    if (!rec.folder || !(await exists(env, rec.folder))) { rec.folder = await own(env, code, await folderOf(env, String(body.folderName || body.name || 'Event').slice(0, 100), await clientFolder(env, code, c))); rec.desc = ''; }
+    const desc = JSON.stringify({ name: body.name || '', social: body.social || '', msg: body.msg || '' });
+    if (rec.desc !== desc) { await gjson(env, `files/${rec.folder}`, 'PATCH', { description: desc }); rec.desc = desc; }
+    await env.BOOTH.put(key, JSON.stringify(rec));
+    return { json: { folder: rec.folder, url: `${base}/v/${rec.folder}` } };
+  }
+  if (path === 'clip') {                                   // a shared folder for one guest's video(s)
+    if (!(await mine(body.eventFolder))) return { status: 403, json: { error: 'not_yours' } };
+    const folder = await own(env, code, await folderOf(env, String(body.label || 'Video').slice(0, 100), body.eventFolder));
+    await makePublic(env, folder);
+    return { json: { folder, url: `${base}/v/${folder}` } };
+  }
+  if (path === 'share') {                                  // the event gallery
+    if (!(await mine(body.folder))) return { status: 403, json: { error: 'not_yours' } };
+    await makePublic(env, body.folder); return { json: { url: `${base}/v/${body.folder}` } };
+  }
+  if (path === 'backups') {                                // private, never shared
+    let id = await env.BOOTH.get('bk:' + code);
+    if (!id || !(await exists(env, id))) { id = await own(env, code, await folderOf(env, 'Backups (private)', await clientFolder(env, code, c))); await env.BOOTH.put('bk:' + code, id); }
+    return { json: { folder: id } };
+  }
+  if (path === 'upload') {                                 // start an upload; the phone sends the file straight to Google
+    if (!(await mine(body.folder))) return { status: 403, json: { error: 'not_yours' } };
+    const t = await accessToken(env); if (!t.access_token) throw Object.assign(new Error('google'), { status: 503, google: true });
+    const r = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id', { method: 'POST',
+      headers: { Authorization: 'Bearer ' + t.access_token, 'Content-Type': 'application/json; charset=UTF-8', 'X-Upload-Content-Type': body.type || 'video/mp4', ...(body.size ? { 'X-Upload-Content-Length': String(body.size) } : {}), Origin: req.headers.get('Origin') || ALLOWED[0] },
+      body: JSON.stringify({ name: String(body.name || 'video.mp4').slice(0, 200), parents: [body.folder] }) });
+    if (!r.ok) return { status: 502, json: { error: 'drive_' + r.status } };
+    return { json: { url: r.headers.get('Location') } };
+  }
+  return { status: 404, json: { error: 'unknown' } };
+}
 
 /* ---------- guest page ---------- */
 async function videoPage(env, id, base) {
@@ -88,7 +148,7 @@ function page(ev, clips, single, base) {
   const src = (f, dl) => f ? `${base}/f/${f.id}${dl ? '?dl=1' : ''}` : '';
   const data = clips.map(c => ({ main: src(c.main), plain: src(c.plain), mainDl: src(c.main, 1), plainDl: src(c.plain, 1), mainName: c.main && c.main.name, plainName: c.plain && c.plain.name, thumb: src(c.thumb) }));
   const name = ev.name ? `<p class="sub">${esc(ev.name)}</p>` : '';
-  const head = `<div class="hero"><img class="logo" src="${SITE}logo.png" alt="Party Machines 360"><h1>${single ? 'Your <b>360°</b> video' : `<b>${clips.length}</b> videos from the 360° booth`}</h1>${name}${ev.msg && single ? `<p class="sub">${esc(ev.msg)}</p>` : ''}</div>`;
+  const head = `<div class="hero"><img class="logo" src="${SITE}logo.png" alt="Party Machines 360"><h1>${single ? 'Your <b>360°</b> video' : `<b>${clips.length}</b> video${clips.length === 1 ? '' : 's'} from the 360° booth`}</h1>${name}${ev.msg && single ? `<p class="sub">${esc(ev.msg)}</p>` : ''}</div>`;
   const player = `<div class="card"><div class="tabs" id="tabs" hidden><button data-v="main" class="on">With design</button><button data-v="plain">Original</button></div>
     <video id="v" playsinline controls loop autoplay muted preload="auto"></video>
     <button class="btn primary" id="save">⤓ Save to my phone</button>
@@ -137,7 +197,7 @@ export default {
   async fetch(req, env) {
     const url = new URL(req.url), origin = req.headers.get('Origin') || '';
     const okOrigin = ALLOWED.includes(origin) || /^http:\/\/localhost(:\d+)?$/.test(origin);
-    const cors = { 'Access-Control-Allow-Origin': okOrigin ? origin : ALLOWED[0], 'Access-Control-Allow-Headers': 'X-Booth-Key', 'Vary': 'Origin' };
+    const cors = { 'Access-Control-Allow-Origin': okOrigin ? origin : ALLOWED[0], 'Access-Control-Allow-Headers': 'X-Booth-Key, Content-Type', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Vary': 'Origin' };
     if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
     const redirect = url.origin + '/callback';
 
@@ -172,6 +232,11 @@ export default {
       if (req.headers.get('X-Booth-Key') !== env.BOOTH_KEY) return new Response('Wrong key', { status: 403, headers: cors });
       const t = await accessToken(env), at = env.BOOTH ? +(await env.BOOTH.get('connected_at')) || 0 : 0;
       return Response.json({ ok: !!t.access_token, error: t.error || '', connectedAt: at, pages: true }, { headers: cors });
+    }
+    const api = url.pathname.match(/^\/api\/(\w+)$/);
+    if (api) {
+      try { const r = await cloudApi(env, api[1], req, url.origin); return Response.json(r.json, { status: r.status || 200, headers: cors }); }
+      catch (e) { return Response.json({ error: e.google ? 'google' : 'drive', message: e.google ? 'Party Machines Cloud is reconnecting to Google. Try again in a few minutes.' : 'Google Drive had a problem (' + (e.status || e.message) + '). Try again.' }, { status: 503, headers: cors }); }
     }
     try {
       let m = url.pathname.match(/^\/v\/([\w-]{10,})\/?$/); if (m) return await videoPage(env, m[1], url.origin);
