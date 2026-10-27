@@ -818,7 +818,7 @@ function renderFormBody() {
   $$('#f-body [data-add]').forEach(b => b.onclick = () => addSegment(b.dataset.add));
   const lkSel = $('#lk-sel'), lkPick = () => LOOKS.find(l => l.id === lkSel.value);
   if (lkSel) {
-    $('#lk-use').onclick = () => { const l = lkPick(); if (!l) { toast('Choose a saved look first'); return; } Object.assign(D, cleanSettings(JSON.parse(JSON.stringify(l.settings)))); FORM.spSig = null; renderFormBody(); toast('Look: ' + l.name); };
+    $('#lk-use').onclick = () => { const l = lkPick(); if (!l) { toast('Choose a saved look first'); return; } Object.assign(D, cleanSettings(JSON.parse(JSON.stringify(l.settings)))); FORM.spSig = null; renderFormBody(); $('#lk-sel').value = l.id; toast('Look: ' + l.name); };
     $('#lk-save').onclick = async () => {
       const name = (prompt('Name this look (e.g. Gold wedding)', (lkPick() || {}).name || '') || '').trim().slice(0, 40); if (!name) return;
       const same = LOOKS.find(l => l.name.toLowerCase() === name.toLowerCase());
@@ -950,7 +950,7 @@ function renderPinCard() {
 
 /* ---------------- home ---------------- */
 const allEvents = async () => (await DB.all('events')).sort((a, b) => b.createdAt - a.createdAt);
-const APP_VERSION = '5.6';
+const APP_VERSION = '5.7';
 async function renderHome() {
   const evs = await allEvents();
   const rb = $('#h-resume'); rb.innerHTML = ''; const kid = localStorage.getItem('kiosk');
@@ -1249,7 +1249,7 @@ async function renderReel(blobs, assets, cfg, onProg = () => {}) {
   const out = cv.captureStream(30); if (music) dest.stream.getAudioTracks().forEach(t => out.addTrack(t));
   const chunks = [], rec = new MediaRecorder(out, { mimeType: MIME || undefined, videoBitsPerSecond: 6e6 });
   rec.ondataavailable = e => e.data && e.data.size && chunks.push(e.data); const finished = new Promise(r => rec.onstop = r);
-  const nodes = []; let st = ctx.currentTime + .05;
+  const nodes = []; let st = ctx ? ctx.currentTime + .05 : 0;          // no music: there is no sound clock to line up with
   if (music) {
     const s = ctx.createBufferSource(); s.buffer = music; s.loop = true; const gn = ctx.createGain(), vol = clamp(cfg.musicVolume, 0, 1), f = Math.min(1.2, total / 2);
     gn.gain.setValueAtTime(0, st); gn.gain.linearRampToValueAtTime(vol, st + f); gn.gain.setValueAtTime(vol, st + total - f); gn.gain.linearRampToValueAtTime(0, st + total);
@@ -1771,7 +1771,7 @@ const BACKUP = (() => {
     sheet('Back up “' + ev.name + '”', 'Getting videos ready…', 'Keep the app open until this is done.');
     try {
       const { file, clips } = await buildFile(ev);
-      prog(`Backup ready · ${clips.length} videos · ${fmtBytes(file.size)}`, 1);
+      prog(`Backup ready · ${clips.length} video${clips.length === 1 ? '' : 's'} · ${fmtBytes(file.size)}`, 1);
       el('bk-tip').innerHTML = 'Tap <b>Save backup file</b>, then pick <b>Save to Files → iCloud Drive</b>, or <b>AirDrop</b> it to your Mac.<br>Do not keep it only on this phone — if the phone is lost or the app icon is deleted, the backup must be somewhere else.';
       button('Save backup file', async () => {
         let saved = false;
@@ -1830,7 +1830,7 @@ const BACKUP = (() => {
       await loadAssets();
       try { if (navigator.storage && navigator.storage.persist) await navigator.storage.persist(); } catch {}
       prog('Restore finished ✓', 1);
-      el('bk-tip').innerHTML = done.map(r => `<b>${esc(r.ev.name)}</b>: ${r.added} video${r.added === 1 ? '' : 's'} added${r.had ? `, ${r.had} were already here` : ''}.`).join('<br>');
+      el('bk-tip').innerHTML = done.map(r => `<b>${esc(r.ev.name)}</b>: ${r.added} video${r.added === 1 ? '' : 's'} added${r.had ? `, ${r.had} ${r.had === 1 ? 'was' : 'were'} already here` : ''}.`).join('<br>');
       if (done.length === 1) button('Open event', () => { el('bk-sheet').classList.remove('show'); openHub(done[0].ev.id); });
     } catch (e) {
       prog('Restore stopped: ' + (e && e.message || e), 0); el('bk-tip').innerHTML = ''; console.warn('restore failed', e);
@@ -1954,7 +1954,7 @@ let CUR_CLIPS = [];
 $('#v-back').onclick = () => openHub(CUR.id);
 async function openVideos() {
   const id = CUR.id; CUR_CLIPS = (await DB.byEvent(id)).sort((a, b) => a.createdAt - b.createdAt);
-  $('#ev-title').textContent = CUR.name; $('#ev-sub').textContent = `${CUR_CLIPS.length} videos · ${fmtDate(CUR.createdAt)}`;
+  $('#ev-title').textContent = CUR.name; $('#ev-sub').textContent = `${CUR_CLIPS.length} video${CUR_CLIPS.length === 1 ? '' : 's'} · ${fmtDate(CUR.createdAt)}`;
   const n = CUR_CLIPS.length, batches = []; { let cur = [], cnt = 0; CUR_CLIPS.forEach((c, idx) => { const k = c.plain ? 2 : 1; if (cnt + k > 6 && cur.length) { batches.push(cur); cur = []; cnt = 0; } if (!cur.length) cur.from = idx + 1; cur.push(c); cnt += k; cur.to = idx + 1; cur.files = cnt; }); if (cur.length) batches.push(cur); }
   const a = $('#ev-actions'); a.innerHTML = `<h2 style="margin:0">Save &amp; export</h2>
     ${batches.map((b, i) => `<button class="btn primary" data-batch="${i}">Save to Photos — videos ${b.from}–${b.to}${b.files > b.length ? ' (' + b.files + ' files)' : ''}</button>`).join('') || '<div class="sub">No videos yet. Go back and tap Start recording.</div>'}
