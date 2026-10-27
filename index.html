@@ -66,6 +66,13 @@ h2{font-size:13px;margin:10px 0 0;color:var(--mut);text-transform:uppercase;lett
 .list-item{display:flex;align-items:center;gap:12px;padding:14px;border-radius:16px;background:var(--panel);border:1px solid var(--line);cursor:pointer}
 .list-item .grow{flex:1;min-width:0}
 .list-item b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.evthumb{width:54px;height:54px;border-radius:14px;overflow:hidden;background:var(--panel);flex:0 0 auto;display:grid;place-items:center;border:1px solid var(--line)}
+.evthumb img{width:100%;height:100%;object-fit:cover;display:block}.evthumb .ph{width:30px;height:30px;opacity:.55}
+.today{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:99px;background:var(--accent);color:var(--ink);font-size:11px;font-weight:800;vertical-align:2px}
+.stats{display:flex;gap:8px;width:100%}.stats div{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:10px 6px;text-align:center}
+.stats b{display:block;font-size:22px;color:var(--accent);line-height:1.1}.stats span{font-size:12px;color:var(--mut)}
+.warnbox{border-color:rgba(255,210,31,.55);background:linear-gradient(160deg,rgba(255,210,31,.14),var(--panel) 60%)}
+.hubstrip{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px}.hubstrip img{height:92px;aspect-ratio:3/4;object-fit:cover;border-radius:12px;border:1px solid var(--line);flex:0 0 auto}
 
 /* settings */
 .set{display:flex;flex-direction:column;gap:6px;padding:12px 0;border-bottom:1px solid var(--line)}
@@ -258,8 +265,10 @@ details.past .list-item{margin-top:8px;background:var(--panel2)}
 <!-- ===== HOME ===== -->
 <section id="s-home" class="screen active"><div class="wrap home">
   <button class="ledbtn" id="led-btn" aria-label="LED lights"><svg viewBox="0 0 24 24"><path d="M6.5 7.5l11 9-5.5 4.5V3l5.5 4.5-11 9"/></svg><i></i></button>
-  <div class="welcome"><img class="mark" src="logo.png" alt="Party Machines 360 logo" width="150" height="150"><h1>Welcome</h1><div class="sub">Party Machines Booth</div></div>
+  <div class="welcome"><img class="mark" src="logo.png" alt="Party Machines 360 logo" width="150" height="150"><h1 id="h-hello">Welcome</h1><div class="sub">Party Machines 360° Booth</div></div>
+  <div class="stats hidden" id="h-stats"></div>
   <div id="h-resume"></div>
+  <div id="h-alert"></div>
   <button class="btn primary big" id="h-new">Start new event</button>
   <button class="btn ghost" id="h-defaults">Default settings &amp; PIN</button>
   <button class="btn ghost" id="h-drive">Online QR · Google Drive</button>
@@ -290,6 +299,7 @@ details.past .list-item{margin-top:8px;background:var(--panel2)}
   <button class="back" data-go="home">‹ Home</button>
   <h1 id="hub-title">Event</h1>
   <div class="sub" id="hub-sub"></div>
+  <div class="hubstrip" id="hub-strip"></div>
   <button class="btn primary big" id="hub-record">● Start recording</button>
   <button class="btn big" id="hub-videos">Videos <span id="hub-count" class="sub"></span></button>
   <button class="btn big" id="hub-summary">End-of-event summary</button>
@@ -434,6 +444,8 @@ details.past .list-item{margin-top:8px;background:var(--panel2)}
       <input type="text" id="dr-wurl" placeholder="https://booth-drive.yourname.workers.dev" autocapitalize="off" autocomplete="off" spellcheck="false">
       <input type="text" id="dr-wkey" placeholder="Helper key" autocapitalize="off" autocomplete="off" spellcheck="false">
       <div class="row"><button class="btn primary" id="dr-wsave">Save helper</button><button class="btn" id="dr-wclear">Remove</button></div>
+      <button class="btn" id="dr-reconnect">Reconnect Google</button>
+      <div class="sub">Only needed if this panel says the Google login expired. It opens Google once — pick your account and tap Continue.</div>
     </div></details>
   <label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="dr-auto"> Upload every video automatically (QR is instant)</label>
   <label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="dr-autobk"> Back up the event to Google Drive when I leave the booth</label>
@@ -901,7 +913,7 @@ function renderPinCard() {
 
 /* ---------------- home ---------------- */
 const allEvents = async () => (await DB.all('events')).sort((a, b) => b.createdAt - a.createdAt);
-const APP_VERSION = '5.3';
+const APP_VERSION = '5.4';
 async function renderHome() {
   const evs = await allEvents();
   const rb = $('#h-resume'); rb.innerHTML = ''; const kid = localStorage.getItem('kiosk');
@@ -916,16 +928,28 @@ async function renderHome() {
   $('#h-ver').textContent = 'Version ' + APP_VERSION;
   $('#h-count').textContent = evs.length ? '(' + evs.length + ')' : '';
   const box = $('#h-list'); box.innerHTML = evs.length ? '' : '<div class="sub" style="padding:4px 2px 0">No events yet — start your first one above.</div>';
-  evs.forEach(e => {
+  const hr = new Date().getHours(); $('#h-hello').textContent = hr < 12 ? 'Good morning' : hr < 18 ? 'Good afternoon' : 'Good evening';
+  const today = new Date().toDateString(), urls = [], items = [], run = renderHome.run = (renderHome.run || 0) + 1;
+  let totalClips = 0;
+  for (const e of evs) {
+    const clips = await DB.byEvent(e.id); totalClips += clips.length;
+    const last = clips.filter(c => c.thumb).sort((a, b) => b.createdAt - a.createdAt)[0], url = last ? URL.createObjectURL(last.thumb) : ''; if (url) urls.push(url);
+    const isToday = new Date(e.createdAt).toDateString() === today, safe = BACKUP.isSafe(e, clips.length);
     const d = document.createElement('div'); d.className = 'list-item';
-    d.innerHTML = `<div class="grow"><b>${esc(e.name)}</b><span class="sub">${e.clipCount} videos · ${fmtDate(e.createdAt)}</span></div><span style="color:var(--mut)">›</span>`;
-    d.onclick = () => openHub(e.id); box.appendChild(d);
-  });
+    d.innerHTML = `<div class="evthumb">${url ? `<img src="${url}" alt="">` : '<img class="ph" src="icon-192.png" alt="">'}</div><div class="grow"><b>${esc(e.name)}${isToday ? '<span class="today">TODAY</span>' : ''}</b><span class="sub">${clips.length} video${clips.length === 1 ? '' : 's'} · ${fmtDate(e.createdAt)}${safe ? '' : ' · <span style="color:var(--accent)">not backed up</span>'}</span></div><span style="color:var(--mut)">›</span>`;
+    d.onclick = () => openHub(e.id); items.push(d);
+  }
+  if (run !== renderHome.run) { urls.forEach(u => URL.revokeObjectURL(u)); return; }       // a newer refresh is drawing the list
+  if (items.length) box.replaceChildren(...items);
+  (renderHome.urls || []).forEach(u => URL.revokeObjectURL(u)); renderHome.urls = urls;
+  const hs = $('#h-stats'); hs.classList.toggle('hidden', !evs.length);
+  hs.innerHTML = `<div><b>${evs.length}</b><span>events</span></div><div><b>${totalClips}</b><span>videos</span></div><div><b>${evs.filter(e => new Date(e.createdAt).toDateString() === today).length }</b><span>today</span></div>`;
   try {
     const est = navigator.storage && navigator.storage.estimate ? await navigator.storage.estimate() : null;
     const persisted = navigator.storage && navigator.storage.persisted ? await navigator.storage.persisted() : false;
     $('#h-storage').textContent = est ? `Stored on this phone: ${fmtBytes(est.usage || 0)} · ${persisted ? 'protected from auto-clean' : 'not yet protected from auto-clean'}` : '';
   } catch {}
+  try { DRIVE.health().then(h => { $('#h-alert').innerHTML = h.ok || !h.setup ? '' : `<div class="card warnbox"><b>Online QR needs attention</b><div class="sub">${esc(h.message)}</div>${h.expired ? '<button class="btn" id="h-alert-go">Open Online QR</button>' : ''}</div>`; const g = $('#h-alert-go'); if (g) g.onclick = () => $('#h-drive').click(); }); } catch {}
   const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
   $('#h-install').textContent = standalone ? 'For a locked kiosk, triple-click the side button to start Guided Access.' : 'Tip: in Safari tap Share → Add to Home Screen so it runs full-screen and keeps your videos safe.';
 }
@@ -969,6 +993,9 @@ async function openHub(id) {
   const clips = await DB.byEvent(id);
   $('#hub-title').textContent = CUR.name; $('#hub-sub').textContent = 'Created ' + fmtDate(CUR.createdAt);
   $('#hub-count').textContent = '(' + clips.length + ')';
+  (openHub.urls || []).forEach(u => URL.revokeObjectURL(u));
+  openHub.urls = clips.filter(c => c.thumb).sort((a, b) => b.createdAt - a.createdAt).slice(0, 8).map(c => URL.createObjectURL(c.thumb));
+  $('#hub-strip').innerHTML = openHub.urls.map(u => `<img src="${u}" alt="">`).join(''); $('#hub-strip').onclick = () => openVideos();
   BACKUP.status(CUR, clips.length);
   show('hub');
 }
@@ -1785,6 +1812,7 @@ const RD_ROWS = [
   ['storage', 'Storage', 'Space left on this phone for videos.'],
   ['battery', 'Battery', 'Charge level while the booth runs.'],
   ['idle', 'Waiting screen', 'The photos or videos that play while nobody is using the booth.'],
+  ['online', 'Online QR sharing', 'Checks the internet and your Google Drive connection, so guests can scan a QR code for their video.'],
 ];
 function rdSet(k, state, detail) { const r = $(`#rd-list .rdrow[data-k="${k}"]`); if (!r) return; r.className = 'rdrow ' + state; r.dataset.k = k; if (detail != null) r.querySelector('.sub').textContent = detail; }
 function openReady() {
@@ -1826,6 +1854,10 @@ const RD_CHECK = {
   async idle() {
     const n = (CUR.settings.idleIds || []).filter(id => ASSETS[id]).length;
     rdSet('idle', CUR.settings.idleOn && n ? 'ok' : 'warn', CUR.settings.idleOn ? (n ? `On — ${n} item${n > 1 ? 's' : ''} play after ${CUR.settings.idleAfter} s of nobody using the booth.` : 'Turned on, but no photos or videos added yet.') : 'Off. Turn it on in Event settings → Waiting screen.');
+  },
+  async online() {
+    rdSet('online', 'run', 'Checking…'); const h = await DRIVE.health();
+    rdSet('online', h.ok ? 'ok' : h.setup ? 'bad' : 'warn', h.ok ? 'Connected — QR codes and the event gallery will work.' : h.message);
   },
 };
 $('#hub-ready').onclick = () => openReady();
@@ -1972,7 +2004,7 @@ const DRIVE = (() => {
   const ready = () => !!(cfg.worker || cfg.clientId);
   async function fromHelper() {            // the helper keeps the Google login, so no popup and no tap are needed
     const r = await fetch(cfg.worker.replace(/\/+$/, '') + '/token', { headers: { 'X-Booth-Key': cfg.workerKey } });
-    if (!r.ok) throw new Error(r.status === 403 ? 'The helper key is wrong.' : 'The helper could not get a Google key (' + r.status + ').');
+    if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(r.status === 403 ? 'The helper key is wrong.' : /invalid_grant|not_connected/.test(j.error || '') ? 'The Google login expired. Go to Home → Online QR and tap Reconnect Google.' : 'The helper could not get a Google key (' + (j.error || r.status) + ').'); }
     const j = await r.json(); tok = j.access_token; exp = Date.now() + (+j.expires_in || 3600) * 1000; return tok;
   }
   /* Safari only opens the Google popup straight from the tap, so when Google's script is already loaded this builds the request without waiting for anything */
@@ -1998,10 +2030,14 @@ const DRIVE = (() => {
     return r.json();
   }
   const mkFolder = async (name, parent) => (await api('files?fields=id', { method: 'POST', body: JSON.stringify({ name, mimeType: 'application/vnd.google-apps.folder', ...(parent ? { parents: [parent] } : {}) }) })).id;
+  const pageUrl = folder => cfg.worker ? cfg.worker.replace(/\/+$/, '') + '/v/' + folder : 'https://drive.google.com/drive/folders/' + folder;
   async function eventFolder(ev) {
     if (!cfg.rootId) { cfg.rootId = await mkFolder('Party Machines 360'); await save(); }
     if (!cfg.events[ev.id]) { cfg.events[ev.id] = await mkFolder(baseName(ev), cfg.rootId); await save(); }
-    return cfg.events[ev.id];
+    const id = cfg.events[ev.id], st = ev.settings || {}, desc = JSON.stringify({ name: ev.name, social: st.thanksSocial || '', msg: st.thanksOn ? st.thanksText || '' : '' });
+    cfg.info = cfg.info || {};
+    if (cfg.info[id] !== desc) { await api('files/' + id, { method: 'PATCH', body: JSON.stringify({ description: desc }) }); cfg.info[id] = desc; await save(); }   // the guest page shows the event name and your social line
+    return id;
   }
   async function putFile(file, parent, onp) {
     const t = await token(), init = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id', { method: 'POST',
@@ -2019,7 +2055,8 @@ const DRIVE = (() => {
         const parent = await eventFolder(ev), folder = await mkFolder('Video ' + clip.id.slice(0, 6) + ' ' + new Date(clip.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), parent);
         await api('files/' + folder + '/permissions', { method: 'POST', body: JSON.stringify({ role: 'reader', type: 'anyone' }) });
         done = 0; for (const f of files) { const base = done; await putFile(f, folder, p => onp && onp((base + p * f.size) / total)); done += f.size; }
-        return 'https://drive.google.com/drive/folders/' + folder;
+        if (clip.thumb) try { await putFile(new File([clip.thumb], 'thumb.jpg', { type: 'image/jpeg' }), folder); } catch {}      // picture for the event gallery
+        return pageUrl(folder);
       } catch (e) {
         if (attempt === 0 && e.status === 404) { cfg.rootId = ''; cfg.events = {}; await save(); continue; }      // folder was deleted in Drive: start fresh
         throw e;
@@ -2056,7 +2093,7 @@ const DRIVE = (() => {
   };
   /* settings sheet */
   const stat = (cls, t, d) => { $('#dr-stat').className = 'ledstat ' + cls; $('#dr-stat-t').textContent = t; $('#dr-stat-d').textContent = d || ''; };
-  const refreshStat = () => cfg.worker ? stat('on', 'Always signed in', 'Using your Cloudflare helper — no sign-in needed.') : !cfg.clientId ? stat('', 'Not set up', 'Follow the one-time Google setup below.') : valid() ? stat('on', 'Signed in', 'Videos can be uploaded.') : stat('warn', 'Sign in needed', 'Tap “Save & sign in”. Google sign-in lasts about an hour.');
+  const refreshStat = () => cfg.worker ? (stat('on', 'Always signed in', 'Using your Cloudflare helper — checking Google…'), health().then(h => h.ok ? stat('on', 'Always signed in', 'Google is connected. Guests get a Party Machines page for their video.') : stat('warn', h.expired ? 'Google login expired' : 'Not working', h.message))) : !cfg.clientId ? stat('', 'Not set up', 'Follow the one-time Google setup below.') : valid() ? stat('on', 'Signed in', 'Videos can be uploaded.') : stat('warn', 'Sign in needed', 'Tap “Save & sign in”. Google sign-in lasts about an hour.');
   async function openSheet() { await load(); $('#dr-id').value = cfg.clientId || ''; $('#dr-auto').checked = !!cfg.auto; $('#dr-autobk').checked = !!cfg.autoBackup; $('#dr-msg').textContent = ''; $('#dr-wurl').value = cfg.worker || ''; $('#dr-wkey').value = cfg.workerKey || ''; $('#dr-help').open = !ready(); refreshStat(); $('#dr-sheet').classList.add('show'); if (online()) gis().catch(() => {}); }
   $('#h-drive').onclick = openSheet; $('#dr-close').onclick = () => $('#dr-sheet').classList.remove('show');
   $('#dr-auto').onchange = async () => { cfg.auto = $('#dr-auto').checked; await save(); };
@@ -2095,7 +2132,7 @@ const DRIVE = (() => {
         if (!cfg.shared[folder]) { await api('files/' + folder + '/permissions', { method: 'POST', body: JSON.stringify({ role: 'reader', type: 'anyone' }) }); cfg.shared[folder] = 1; await save(); }
         const todo = clips.filter(c => !c.driveUrl);
         for (const [i, c] of todo.entries()) await ensureLink(c, ev, f => msg(`Uploading video ${i + 1} of ${todo.length}… ${Math.round(f * 100)}%`));
-        return 'https://drive.google.com/drive/folders/' + folder;
+        return pageUrl(folder);
       } catch (e) { if (attempt === 0 && e.status === 404) { cfg.rootId = ''; cfg.events = {}; await save(); continue; } throw e; }
     }
   }
@@ -2110,6 +2147,26 @@ const DRIVE = (() => {
       } catch (e) { if (attempt === 0 && e.status === 404) { cfg.rootId = ''; cfg.backupsId = ''; cfg.events = {}; await save(); continue; } throw e; }
     }
   }
+  /* is online sharing working? {ok, setup, message} */
+  async function health() {
+    await load();
+    if (!ready()) return { ok: false, setup: false, message: 'Not set up. Go to Home → Online QR · Google Drive.' };
+    if (!online()) return { ok: false, setup: true, message: 'No internet right now. Videos are still saved on the phone; QR codes need Wi-Fi or mobile data.' };
+    if (cfg.worker) {
+      try {
+        const r = await fetch(cfg.worker.replace(/\/+$/, '') + '/health', { headers: { 'X-Booth-Key': cfg.workerKey } });
+        if (r.status === 403) return { ok: false, setup: true, message: 'The helper key is wrong. Paste the setup code again in Home → Online QR.' };
+        const j = await r.json();
+        return j.ok ? { ok: true } : { ok: false, setup: true, expired: true, message: 'The Google login expired. Go to Home → Online QR and tap Reconnect Google.' };
+      } catch { return { ok: false, setup: true, message: 'Could not reach your helper. Check the internet.' }; }
+    }
+    return valid() ? { ok: true } : { ok: false, setup: true, message: 'Google sign-in needed. Go to Home → Online QR and tap Save & sign in.' };
+  }
+  $('#dr-reconnect').onclick = () => {
+    if (!cfg.worker || !cfg.workerKey) { $('#dr-msg').textContent = 'Set up the helper first (paste the setup code above).'; return; }
+    window.open(cfg.worker.replace(/\/+$/, '') + '/auth?key=' + encodeURIComponent(cfg.workerKey), '_blank');
+    $('#dr-msg').textContent = 'Google opened. Pick your account, tap Continue, then come back here and close this panel.'; tok = null; exp = 0;
+  };
   $('#dr-autobk').onchange = async () => { cfg.autoBackup = $('#dr-autobk').checked; await save(); };
   async function modalButton(c) { await load(); $('#m-qr').classList.toggle('hidden', !!c.reel || !ready()); }
   $('#m-qr').onclick = async () => {
@@ -2121,7 +2178,7 @@ const DRIVE = (() => {
     finally { b.disabled = false; b.textContent = 'QR code'; }
   };
   return {
-    updateButton, modalButton, gallery, putBackup, showQR,
+    updateButton, modalButton, gallery, putBackup, showQR, health,
     isReady: async () => { await load(); return ready(); },
     autoBackupOn: async () => { await load(); return !!cfg.autoBackup && ready() && online(); },
     /* called right after a video is saved: upload quietly if automatic upload is on and we are signed in */

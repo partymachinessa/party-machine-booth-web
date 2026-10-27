@@ -1,3 +1,10 @@
 name = "booth-drive"
 main = "worker.js"
 compatibility_date = "2025-01-01"
+# keep the variables that were typed into the Cloudflare dashboard (CLIENT_SECRET) when deploying
+keep_vars = true
+
+# where the Google login is kept, so reconnecting needs no copy-paste
+[[kv_namespaces]]
+binding = "BOOTH"
+id = "7d2ffe2f602d42bea0b4bfeaaea581c0"
