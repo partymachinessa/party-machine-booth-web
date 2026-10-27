@@ -74,6 +74,13 @@ async function cloudApi(env, path, req, base) {
     if (!(await mine(body.folder))) return { status: 403, json: { error: 'not_yours' } };
     await makePublic(env, body.folder); return { json: { url: `${base}/v/${body.folder}` } };
   }
+  if (path === 'short') {                                 // a short, typeable link for the TV and the laptop
+    if (!(await mine(body.folder))) return { status: 403, json: { error: 'not_yours' } };
+    await makePublic(env, body.folder);
+    let sh = await env.BOOTH.get('sf:' + body.folder);
+    if (!sh) { const A = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; do { sh = Array.from(crypto.getRandomValues(new Uint8Array(6)), b => A[b % A.length]).join(''); } while (await env.BOOTH.get('s:' + sh)); await env.BOOTH.put('s:' + sh, body.folder); await env.BOOTH.put('sf:' + body.folder, sh); }
+    return { json: { short: sh, tv: `${base}/tv/${sh}`, live: `${base}/live/${sh}`, gallery: `${base}/v/${body.folder}` } };
+  }
   if (path === 'backups') {                                // private, never shared
     let id = await env.BOOTH.get('bk:' + code);
     if (!id || !(await exists(env, id))) { id = await own(env, code, await folderOf(env, 'Backups (private)', await clientFolder(env, code, c))); await env.BOOTH.put('bk:' + code, id); }
@@ -89,6 +96,113 @@ async function cloudApi(env, path, req, base) {
     return { json: { url: r.headers.get('Location') } };
   }
   return { status: 404, json: { error: 'unknown' } };
+}
+
+/* ---------- every video of an event, newest first (for the TV and the laptop) ---------- */
+async function resolveId(env, x) { return x.length < 12 ? await env.BOOTH.get('s:' + x.toUpperCase()) : x; }
+async function eventList(env, id, base) {
+  const f = await drive(env, `files/${id}?fields=id,name,mimeType,description`);
+  if (f.mimeType !== 'application/vnd.google-apps.folder' || !(await isPublic(env, id))) return null;
+  const subs = (await drive(env, `files?q=${encodeURIComponent(`'${id}' in parents and trashed=false and mimeType='application/vnd.google-apps.folder'`)}&fields=files(id,name,createdTime)&orderBy=createdTime desc&pageSize=1000`)).files;
+  const clips = [];
+  for (let i = 0; i < subs.length; i += 40) {
+    const part = subs.slice(i, i + 40), q = '(' + part.map(s => `'${s.id}' in parents`).join(' or ') + ') and trashed=false';
+    const files = (await drive(env, `files?q=${encodeURIComponent(q)}&fields=files(id,name,mimeType,parents)&pageSize=1000`)).files;
+    for (const s of part) {
+      const fs = files.filter(x => x.parents && x.parents[0] === s.id), vid = x => x.mimeType.startsWith('video');
+      const main = fs.find(x => vid(x) && /template/.test(x.name)) || fs.find(x => vid(x) && !/_plain/.test(x.name)), plain = fs.find(x => vid(x) && /_plain/.test(x.name)), thumb = fs.find(x => x.mimeType.startsWith('image'));
+      if (main || plain) clips.push({ id: s.id, when: s.createdTime, page: `${base}/v/${s.id}`, main: main && `${base}/f/${main.id}`, plain: plain && `${base}/f/${plain.id}`, thumb: thumb && `${base}/f/${thumb.id}`, dl: (main || plain) && `${base}/f/${(main || plain).id}?dl=1` });
+    }
+  }
+  return { ...JSON.parse(f.description || '{}'), folder: id, gallery: `${base}/v/${id}`, clips };
+}
+const QRJS = `<script src="${SITE}qr.js"></script><script>function drawQR(cv,url,px){const q=qrcode(0,'M');q.addData(url);q.make();const n=q.getModuleCount(),z=4,s=(n+z*2)*px;cv.width=cv.height=s;const g=cv.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,s,s);g.fillStyle='#000';for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(q.isDark(r,c))g.fillRect((c+z)*px,(r+z)*px,px,px);}</script>`;
+
+/* TV: plays every video full screen, newest first; new videos jump the queue */
+function tvPage(x) {
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Party Machines 360 · Live</title><link rel="icon" href="${SITE}icon-192.png">
+<style>html,body{margin:0;height:100%;background:#000;color:#fff;font:16px -apple-system,Segoe UI,Roboto,sans-serif;overflow:hidden;cursor:none}
+video{position:fixed;inset:0;width:100%;height:100%;object-fit:contain;background:#000;transition:opacity .5s}
+#bg{position:fixed;inset:-40px;background-size:cover;background-position:center;filter:blur(40px) brightness(.45);transform:scale(1.1)}
+#brand{position:fixed;left:3vmin;top:3vmin;display:flex;align-items:center;gap:1.6vmin;background:rgba(5,11,31,.55);padding:1.2vmin 2vmin 1.2vmin 1.2vmin;border-radius:99px;backdrop-filter:blur(8px)}
+#brand img{width:7vmin;height:7vmin;border-radius:50%}#brand b{font-size:3vmin}#brand span{display:block;font-size:2vmin;color:#ffd21f}
+#qr{position:fixed;right:3vmin;bottom:3vmin;background:rgba(5,11,31,.7);padding:1.6vmin;border-radius:2.4vmin;text-align:center;backdrop-filter:blur(8px)}
+#qr canvas{width:17vmin;height:17vmin;border-radius:1.2vmin;display:block}#qr div{font-size:1.9vmin;margin-top:1vmin;font-weight:700}
+#new{position:fixed;left:50%;top:4vmin;transform:translateX(-50%);background:#ffd21f;color:#1a1400;font-weight:900;font-size:3vmin;padding:1vmin 3vmin;border-radius:99px;display:none}
+#wait{position:fixed;inset:0;display:grid;place-items:center;text-align:center;font-size:4vmin}#wait img{width:30vmin;border-radius:50%;margin-bottom:3vmin}
+#tip{position:fixed;bottom:3vmin;left:3vmin;font-size:1.8vmin;color:#9fb0d8;transition:opacity 1s}</style></head><body>
+<div id="bg"></div><video id="v" muted playsinline autoplay></video>
+<div id="wait"><div><img src="${SITE}logo.png" alt=""><div id="wt">Waiting for the first video…</div></div></div>
+<div id="brand"><img src="${SITE}icon-192.png" alt=""><div><b id="ev">Party Machines 360°</b><span id="so"></span></div></div>
+<div id="new">NEW VIDEO</div>
+<div id="qr"><canvas id="qc"></canvas><div>Scan for your video</div></div>
+<div id="tip">Click anywhere for full screen</div>
+${QRJS}<script>
+const X=${JSON.stringify(x)};let list=[],seen=new Set(),queue=[],idx=0,first=true;const v=document.getElementById('v');
+async function poll(){try{const j=await (await fetch('/api/live?id='+X,{cache:'no-store'})).json();if(j.error){document.getElementById('wt').textContent='This screen link is not active.';return;}
+document.getElementById('ev').textContent=j.name||'Party Machines 360°';document.getElementById('so').textContent=j.social||'';if(first){drawQR(document.getElementById('qc'),j.gallery,6);}
+for(const c of j.clips.slice().reverse()){if(!seen.has(c.id)){seen.add(c.id);if(!first)queue.push(c);}}list=j.clips;
+if(first){first=false;if(list.length)play();}else if(v.paused&&queue.length)play();}catch(e){}}
+function play(){const c=queue.length?queue.shift():list[idx++%Math.max(1,Math.min(list.length,40))];if(!c)return;
+document.getElementById('wait').style.display='none';document.getElementById('new').style.display=Date.now()-new Date(c.when)<180000?'block':'none';
+document.getElementById('bg').style.backgroundImage=c.thumb?'url('+c.thumb+')':'';v.src=c.main||c.plain;v.play().catch(()=>{});}
+v.onended=()=>play();v.onerror=()=>setTimeout(play,1500);
+document.body.onclick=()=>{(document.documentElement.requestFullscreen||document.documentElement.webkitRequestFullscreen||function(){}).call(document.documentElement);document.getElementById('tip').style.opacity=0;};
+setTimeout(()=>document.getElementById('tip').style.opacity=0,9000);poll();setInterval(poll,8000);
+</script></body></html>`;
+}
+
+/* laptop share station: every video as it arrives, with QR, WhatsApp, copy and download */
+function livePage(x) {
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Party Machines 360 · Share station</title><link rel="icon" href="${SITE}icon-192.png">
+<style>:root{--bg:#071233;--panel:#0f1f4d;--panel2:#14275e;--line:#22356f;--text:#f3f6ff;--mut:#9fb0d8;--accent:#ffd21f;--ink:#1a1400;--blue:#2f7bff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.4 -apple-system,Segoe UI,Roboto,sans-serif}
+header{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:14px;padding:14px 20px;background:rgba(7,18,51,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);flex-wrap:wrap}
+header img{width:44px;height:44px;border-radius:50%}header h1{font-size:20px;margin:0}header .sub{color:var(--mut);font-size:13px}.grow{flex:1;min-width:160px}
+.btn{border:1px solid var(--line);background:var(--panel2);color:var(--text);border-radius:12px;padding:10px 14px;font:inherit;font-weight:700;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px;justify-content:center}
+.btn.y{background:var(--accent);color:var(--ink);border-color:transparent}.btn.g{background:#25d366;color:#05210f;border-color:transparent}
+main{display:grid;grid-template-columns:1fr minmax(320px,420px);gap:20px;padding:20px}@media(max-width:860px){main{grid-template-columns:1fr}}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;align-content:start}
+.tile{position:relative;aspect-ratio:3/4;border-radius:14px;overflow:hidden;background:var(--panel);border:2px solid var(--line);cursor:pointer;padding:0}
+.tile.on{border-color:var(--accent)}.tile img{width:100%;height:100%;object-fit:cover;display:block}
+.tile span{position:absolute;left:6px;bottom:6px;background:rgba(0,0,0,.65);color:#fff;border-radius:99px;padding:2px 9px;font-size:12px}
+.tile em{position:absolute;right:6px;top:6px;background:var(--accent);color:var(--ink);font-style:normal;font-weight:900;font-size:11px;border-radius:99px;padding:2px 8px}
+.tile.sent::after{content:'✓ shared';position:absolute;left:6px;top:6px;background:#25d366;color:#05210f;font-weight:800;font-size:11px;border-radius:99px;padding:2px 8px}
+aside{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:12px;position:sticky;top:90px;align-self:start}
+aside video{width:100%;max-height:46vh;border-radius:12px;background:#000}
+.qrrow{display:flex;gap:14px;align-items:center}.qrrow canvas{width:150px;height:150px;border-radius:10px;flex:0 0 auto}
+input{width:100%;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font:inherit;font-size:18px}
+.row{display:flex;gap:8px;flex-wrap:wrap}.row>*{flex:1}.mut{color:var(--mut);font-size:13px}.empty{color:var(--mut);padding:40px;text-align:center}
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--accent);color:var(--ink);font-weight:800;padding:10px 18px;border-radius:99px;display:none}
+.tabs{display:flex;gap:6px}.tabs button{flex:1}.tabs button.on{background:var(--blue);border-color:var(--blue)}</style></head><body>
+<header><img src="${SITE}icon-192.png" alt=""><div class="grow"><h1 id="ev">Share station</h1><div class="sub" id="cnt">Loading…</div></div>
+<a class="btn" id="tvlink" target="_blank">📺 Open TV screen</a><button class="btn y" id="galbtn">Gallery QR (all videos)</button></header>
+<main><div class="grid" id="grid"><div class="empty">Waiting for the first video… New videos appear here by themselves.</div></div>
+<aside id="side"><div class="mut">Click a video to share it.</div></aside></main><div id="toast"></div>
+${QRJS}<script>
+const X=${JSON.stringify(x)};let D=null,sel=null,seen=new Set(),first=true;const sent=new Set(JSON.parse(localStorage.getItem('sent:'+X)||'[]'));
+const $=s=>document.querySelector(s),toast=t=>{const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',2600);};
+const tm=w=>new Date(w).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+$('#tvlink').href='/tv/'+X;
+async function poll(){try{const j=await (await fetch('/api/live?id='+X,{cache:'no-store'})).json();if(j.error){$('#cnt').textContent='This link is not active.';return;}D=j;
+$('#ev').textContent=j.name||'Share station';document.title=(j.name||'Event')+' · Share station';$('#cnt').textContent=j.clips.length+' video'+(j.clips.length===1?'':'s')+' · updates by itself';
+let fresh=0;for(const c of j.clips)if(!seen.has(c.id)){seen.add(c.id);if(!first)fresh++;}if(fresh)toast(fresh+' new video'+(fresh>1?'s':''));first=false;draw();if(!sel&&j.clips[0])pick(j.clips[0].id);}catch(e){$('#cnt').textContent='Reconnecting…';}}
+function draw(){if(!D.clips.length)return;$('#grid').innerHTML=D.clips.map((c,i)=>'<button class="tile'+(c.id===sel?' on':'')+(sent.has(c.id)?' sent':'')+'" data-id="'+c.id+'">'+(c.thumb?'<img src="'+c.thumb+'" loading="lazy" alt="">':'')+(Date.now()-new Date(c.when)<300000?'<em>NEW</em>':'')+'<span>#'+(D.clips.length-i)+' · '+tm(c.when)+'</span></button>').join('');
+document.querySelectorAll('.tile').forEach(t=>t.onclick=()=>pick(t.dataset.id));}
+function pick(id){sel=id;const c=D.clips.find(x=>x.id===id);if(!c)return;draw();const n=D.clips.length-D.clips.indexOf(c);
+$('#side').innerHTML='<b>Video #'+n+' · '+tm(c.when)+'</b>'+(c.main&&c.plain?'<div class="tabs"><button class="btn on" data-v="main">With design</button><button class="btn" data-v="plain">Original</button></div>':'')+
+'<video id="sv" controls autoplay muted loop playsinline src="'+(c.main||c.plain)+'"></video><div class="qrrow"><canvas id="sq"></canvas><div class="mut">Guest scans this with their phone camera to get the video.</div></div>'+
+'<input id="wn" type="tel" placeholder="WhatsApp number, e.g. 082 123 4567"><div class="row"><button class="btn g" id="ws">Send on WhatsApp</button></div>'+
+'<div class="row"><button class="btn" id="cp">Copy link</button><a class="btn" href="'+c.dl+'">Download</a><a class="btn" href="'+c.page+'" target="_blank">Open page</a></div>';
+drawQR($('#sq'),c.page,5);document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('on',x===b));$('#sv').src=c[b.dataset.v];});
+$('#cp').onclick=async()=>{try{await navigator.clipboard.writeText(c.page);toast('Link copied');mark(c.id);}catch(e){prompt('Copy the link',c.page);}};
+$('#ws').onclick=()=>{let d=$('#wn').value.replace(/\\D/g,'');if(d.startsWith('00'))d=d.slice(2);if(/^0\\d{9}$/.test(d))d='27'+d.slice(1);
+const txt='Here is your 360° video'+(D.name?' from '+D.name:'')+'! 🎉\\n'+c.page+(D.social?'\\n'+D.social:'');window.open('https://wa.me/'+(d.length>=10?d:'')+'?text='+encodeURIComponent(txt),'_blank');mark(c.id);$('#wn').value='';};
+$('#wn').onkeydown=e=>{if(e.key==='Enter')$('#ws').click();};}
+function mark(id){sent.add(id);localStorage.setItem('sent:'+X,JSON.stringify([...sent]));draw();}
+$('#galbtn').onclick=()=>{if(!D)return;$('#side').innerHTML='<b>Gallery — all videos</b><canvas id="gq" style="width:100%;max-width:340px;align-self:center;border-radius:12px"></canvas><div class="mut" style="text-align:center">Put this on a table or the TV. It opens every video of the event.</div><a class="btn" href="'+D.gallery+'" target="_blank">Open gallery</a>';drawQR($('#gq'),D.gallery,8);sel=null;draw();};
+poll();setInterval(poll,6000);
+</script></body></html>`;
 }
 
 /* ---------- guest page ---------- */
@@ -234,10 +348,16 @@ export default {
       return Response.json({ ok: !!t.access_token, error: t.error || '', connectedAt: at, pages: true }, { headers: cors });
     }
     const api = url.pathname.match(/^\/api\/(\w+)$/);
-    if (api) {
+    if (api && api[1] !== 'live') {
       try { const r = await cloudApi(env, api[1], req, url.origin); return Response.json(r.json, { status: r.status || 200, headers: cors }); }
       catch (e) { return Response.json({ error: e.google ? 'google' : 'drive', message: e.google ? 'Party Machines Cloud is reconnecting to Google. Try again in a few minutes.' : 'Google Drive had a problem (' + (e.status || e.message) + '). Try again.' }, { status: 503, headers: cors }); }
     }
+    if (url.pathname === '/api/live') {                    // public list for the TV and laptop pages (only shared event folders)
+      try { const id = await resolveId(env, url.searchParams.get('id') || ''); const j = id && await eventList(env, id, url.origin); return Response.json(j || { error: 'not_found' }, { status: j ? 200 : 404, headers: { 'Cache-Control': 'no-store' } }); }
+      catch (e) { return Response.json({ error: 'busy' }, { status: 503 }); }
+    }
+    let lv = url.pathname.match(/^\/(tv|live)\/([\w-]{6,})\/?$/);
+    if (lv) return html(lv[1] === 'tv' ? tvPage(lv[2]) : livePage(lv[2]));
     try {
       let m = url.pathname.match(/^\/v\/([\w-]{10,})\/?$/); if (m) return await videoPage(env, m[1], url.origin);
       m = url.pathname.match(/^\/f\/([\w-]{10,})$/); if (m) return await stream(env, m[1], req, url.searchParams.has('dl'));

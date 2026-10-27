@@ -47,6 +47,11 @@ h2{font-size:13px;margin:10px 0 0;color:var(--mut);text-transform:uppercase;lett
 .back{display:inline-flex;align-items:center;gap:6px;align-self:flex-start;background:rgba(47,123,255,.22);border:1px solid rgba(120,170,255,.35);color:var(--blue-soft);font-weight:700;font-size:15px;padding:9px 16px 9px 12px;border-radius:99px;cursor:pointer}
 .back:active{filter:brightness(1.3)}
 .rhead{display:flex;justify-content:space-between;align-items:center}
+.share3{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:10px}
+.sbtn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:92px;border-radius:20px;border:0;font-weight:800;font-size:15px;cursor:pointer;color:#fff;padding:8px 4px}
+.sbtn svg{width:30px;height:30px}.sbtn:disabled{opacity:.5}
+.sbtn.wa{background:#25d366;color:#05210f}.sbtn.qr{background:var(--accent);color:var(--ink)}.sbtn.ad{background:var(--blue)}
+#r-wabox input{font-size:22px;text-align:center;letter-spacing:.04em}
 .sharebtn{background:var(--accent)!important;color:var(--ink)!important;border-color:transparent!important}
 
 .card{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:12px}
@@ -237,9 +242,10 @@ details.past .list-item{margin-top:8px;background:var(--panel2)}
 .ledbtn i{position:absolute;right:3px;bottom:3px;width:12px;height:12px;border-radius:50%;background:var(--mut);border:2px solid var(--bg)}
 .ledbtn.on i{background:var(--ok)}.ledbtn.busy i{background:var(--blue);animation:blink 1s infinite}.ledbtn.warn i{background:var(--accent)}
 .ledbtn.on svg{stroke:var(--ok)}
-#dr-sheet,#qr-modal,#bk-sheet{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.6);display:none;align-items:flex-end}
-#dr-sheet.show,#qr-modal.show,#bk-sheet.show{display:flex}
-#dr-sheet .panel,#qr-modal .panel,#bk-sheet .panel{background:var(--bg);border:1px solid var(--line);border-radius:24px 24px 0 0;width:100%;max-height:92vh;overflow-y:auto;padding:18px 18px calc(env(safe-area-inset-bottom) + 24px);display:flex;flex-direction:column;gap:12px}
+#dr-sheet,#qr-modal,#bk-sheet,#ls-sheet{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.6);display:none;align-items:flex-end}
+#dr-sheet.show,#qr-modal.show,#bk-sheet.show,#ls-sheet.show{display:flex}
+.lslink{font-weight:800;word-break:break-all;color:var(--blue-soft);font-size:15px;user-select:all;-webkit-user-select:all}
+#dr-sheet .panel,#qr-modal .panel,#bk-sheet .panel,#ls-sheet .panel{background:var(--bg);border:1px solid var(--line);border-radius:24px 24px 0 0;width:100%;max-height:92vh;overflow-y:auto;padding:18px 18px calc(env(safe-area-inset-bottom) + 24px);display:flex;flex-direction:column;gap:12px}
 #qr-modal{z-index:70;align-items:center;justify-content:center}
 #qr-modal .panel{border-radius:24px;max-width:380px;align-items:center;text-align:center}
 #qr-canvas{width:min(78vw,300px);height:min(78vw,300px);image-rendering:pixelated;border-radius:12px;background:#fff}
@@ -302,6 +308,7 @@ details.past .list-item{margin-top:8px;background:var(--panel2)}
   <div class="hubstrip" id="hub-strip"></div>
   <button class="btn primary big" id="hub-record">● Start recording</button>
   <button class="btn big" id="hub-videos">Videos <span id="hub-count" class="sub"></span></button>
+  <button class="btn big" id="hub-live">📺 TV screen &amp; laptop</button>
   <button class="btn big" id="hub-summary">End-of-event summary</button>
   <button class="btn big" id="hub-ready">Ready check</button>
   <div class="card">
@@ -402,13 +409,20 @@ details.past .list-item{margin-top:8px;background:var(--panel2)}
   <div class="seg2 hidden" id="r-tabs"><button data-v="main" class="on">With template</button><button data-v="plain">Plain</button></div>
   <video class="player" id="r-video" playsinline muted loop controls></video>
   <div class="sub" id="r-note" style="text-align:center"></div>
-  <div style="display:flex;gap:10px;align-items:stretch">
-    <button class="btn primary big" id="r-share" style="flex:1">Share · AirDrop · WhatsApp · Save to Photos</button>
-    <button class="btn hidden" id="r-qr" style="flex:0 0 auto;width:auto;padding:0 16px;font-size:14px;line-height:1.2">Share as<br>QR code</button>
+  <div class="share3">
+    <button class="sbtn wa" id="r-wa-go"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.7.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.3-.4.8-1.4a.5.5 0 0 0 0-.5l-.8-1.9c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 11.9 11.9 0 0 0 4.6 4c1.7.7 2.4.8 3.2.7a2.8 2.8 0 0 0 1.8-1.3 2.3 2.3 0 0 0 .2-1.3c-.1-.1-.3-.2-.5-.3z"/></svg>WhatsApp</button>
+    <button class="sbtn qr hidden" id="r-qr"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm8-2h2v2h-2v-2zm2 2h2v2h-2v-2zm2-2h2v2h-2v-2zm2 2h2v2h-2v-2zm-6 2h2v2h-2v-2zm4 0h2v2h-2v-2zm-2 2h2v2h-2v-2zm4 0h2v2h-2v-2z"/></svg>QR code</button>
+    <button class="sbtn ad" id="r-share"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 15V3m0 0L8 7m4-4 4 4"/><path d="M5 11v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8"/></svg>AirDrop · Save</button>
+  </div>
+  <div class="card hidden" id="r-wabox">
+    <b>Send by WhatsApp</b>
+    <input type="tel" id="r-wanum" placeholder="082 123 4567" inputmode="tel" autocomplete="off">
+    <button class="btn primary" id="r-wasend" style="background:#25d366;color:#05210f">Send to this number</button>
+    <button class="btn ghost" id="r-wapick" style="min-height:44px">Or choose a chat in WhatsApp</button>
   </div>
   <div class="sub" id="r-qrmsg" style="text-align:center"></div>
   <div class="sub" id="r-sharehint" style="text-align:center;margin-top:-6px;color:var(--accent)"></div>
-  <div class="sub" style="text-align:center;margin-top:-6px">In the share sheet choose <b>Save Video</b> to put it in Photos. Tap the video for sound.</div>
+  <div class="sub" style="text-align:center;margin-top:-6px">AirDrop · Save opens the share sheet: pick <b>AirDrop</b>, or <b>Save Video</b> for Photos. Tap the video for sound.</div>
   <div class="card lead hidden" id="r-lead">
     <b id="r-leadtitle">Want it sent to you too?</b>
     <input type="email" id="r-email" placeholder="Email" autocomplete="email" inputmode="email">
@@ -469,6 +483,18 @@ details.past .list-item{margin-top:8px;background:var(--panel2)}
     </ol>
   </details>
   </div></details>
+</div></div>
+<div id="ls-sheet"><div class="panel">
+  <div class="top" style="display:flex;align-items:center"><h1 style="flex:1;font-size:22px">TV screen &amp; laptop</h1><button class="back" id="ls-close">Close</button></div>
+  <div class="sub" id="ls-msg">Getting the links ready…</div>
+  <div id="ls-body" class="hidden" style="display:flex;flex-direction:column;gap:12px">
+    <div class="card" style="text-align:center;gap:4px"><div class="sub">Event screen code</div><div id="ls-code" style="font-size:40px;font-weight:900;letter-spacing:.12em;color:var(--accent)"></div></div>
+    <div class="card"><b>📺 TV or projector</b><div class="sub">Plays every video full screen, newest first, with a QR code for guests. Open this on the TV's browser or a laptop connected to the TV:</div><div class="lslink" id="ls-tv"></div></div>
+    <div class="card"><b>💻 Laptop share station</b><div class="sub">Every video appears here a few seconds after it is recorded. Someone at the laptop can show a QR code, send it on WhatsApp, or download it.</div><div class="lslink" id="ls-live"></div></div>
+    <button class="btn primary" id="ls-share">Send the links to my laptop (AirDrop)</button>
+    <button class="btn" id="ls-copy">Copy links</button>
+    <div class="sub">Keep “Upload every video automatically” on (Home → Online QR sharing). Videos recorded without internet upload by themselves when it comes back.</div>
+  </div>
 </div></div>
 <div id="bk-sheet"><div class="panel">
   <div class="top" style="display:flex;align-items:center"><h1 style="flex:1;font-size:22px" id="bk-title">Backup</h1><button class="back" id="bk-close">Close</button></div>
@@ -584,7 +610,7 @@ const outLen = ps => ps.reduce((a, q) => a + (q.e - q.s) / q.rate, 0);
 const DEFAULTS = {
   clipLength: 12, countdown: 3, facing: 'user', framing: 'wide', mirrorFront: true, smooth60: true, outputWidth: 720, keepOriginals: false,
   idleOn: false, idleIds: [], idleAfter: 20, idleSlide: 6,
-  beeps: true, beepVolume: 0.6, smoothSlow: true, makeBoth: true,
+  beeps: true, beepVolume: 0.6, voice: false, voiceGo: 'Spin!', smoothSlow: true, makeBoth: true,
   motionOn: true, sensitivity: 0.5, motionDelay: 2, cooldown: 6, showBack: true, autoReturn: 20,
   segments: [{ start: .35, end: .7, speed: .4 }, { start: .7, end: 1, speed: 1.4 }], boomerang: false, boomerangSec: 1.5,
   overlayFit: 'fill',
@@ -677,6 +703,8 @@ const SETTINGS_UI = [
   ['smooth60', 'check', 'Smooth 60 frames per second', { hint: 'Smoother videos and better slow-motion. If the phone cannot do 60 at the full view, it uses the best it can.' }],
   ['beeps', 'check', 'Countdown beeps on the speaker', { hint: 'One short beep each second, then one long beep when recording starts. It is never recorded in the video. Switch your iPhone’s silent switch off to hear it.' }],
   ['beepVolume', 'range', 'Beep volume', { min: .1, max: 1, step: .05, fmt: v => Math.round(v * 100) + '%', show: 'beeps' }],
+  ['voice', 'check', 'Say the countdown out loud', { hint: 'The phone says “3, 2, 1…” and then your word below, instead of the beeps. Never recorded in the video.' }],
+  ['voiceGo', 'text', 'Word when recording starts', { placeholder: 'Spin!', show: 'voice' }],
   ['mirrorFront', 'check', 'Mirror the front camera', { hint: 'Looks like a mirror, the way people expect a selfie to look. Turn off if text must read the right way round.', show: 'facing=user' }],
   ['outputWidth', 'select', 'Video quality', { num: true, opts: [[720, 'HD 720 (fast, reliable)'], [1080, 'Full HD 1080 (slower)']], hint: 'Videos are finished on the phone in real time — HD 720 is safest for busy events.' }],
   { h: 'Speed, slow-mo & fast-forward', open: true, desc: 'Choose where the video slows down or speeds up. Anywhere you don’t add a section plays at normal speed.' },
@@ -922,7 +950,7 @@ function renderPinCard() {
 
 /* ---------------- home ---------------- */
 const allEvents = async () => (await DB.all('events')).sort((a, b) => b.createdAt - a.createdAt);
-const APP_VERSION = '5.5';
+const APP_VERSION = '5.6';
 async function renderHome() {
   const evs = await allEvents();
   const rb = $('#h-resume'); rb.innerHTML = ''; const kid = localStorage.getItem('kiosk');
@@ -1384,7 +1412,7 @@ async function enterBooth(id) {
   localStorage.setItem('kiosk', id);
   $('#b-evname').textContent = EV.name; bstatus(''); show('booth'); bphase('resume');
 }
-$('#b-go').onclick = () => startBooth();
+$('#b-go').onclick = () => { say(' ', 0); startBooth(); };      // iPhone only lets the page talk after a tap, so unlock the voice here
 $('#b-back').onclick = () => exitRequest();
 function camError(e) {
   const n = (e && e.name) || '';
@@ -1496,6 +1524,9 @@ function beep(freq, dur, vol) {                  // plays on the phone's speaker
     o.connect(gn).connect(ctx.destination); o.start(t); o.stop(t + dur + .03);
   } catch {}
 }
+function say(text, vol = 1) {                     // voice countdown through the phone's speaker
+  try { const u = new SpeechSynthesisUtterance(text); u.rate = 1.05; u.volume = vol; u.lang = 'en-ZA'; speechSynthesis.cancel(); speechSynthesis.speak(u); } catch {}
+}
 function beginCountdown(trigger) {
   if (B.phase !== 'waiting') return;
   idleTouch();
@@ -1504,7 +1535,8 @@ function beginCountdown(trigger) {
   $('#b-cdlabel').textContent = trigger === 'motion' ? 'Movement detected — get ready' : '';
   const ring = $('#b-ring'), C = 2 * Math.PI * 90; ring.style.strokeDasharray = C;
   const paint = () => { $('#b-num').textContent = n > 0 ? n : 'GO'; const el = $('#b-num'); el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); ring.style.strokeDashoffset = C * (1 - (total ? n / total : 0)); if (navigator.vibrate) navigator.vibrate(20);
-    if (EV.settings.beeps !== false) { const vol = clamp(EV.settings.beepVolume ?? .6, .05, 1); if (n > 0) beep(880, .16, vol); else beep(1320, .85, vol); } };
+    if (EV.settings.voice) say(n > 0 ? String(n) : (EV.settings.voiceGo || 'Spin!').trim() || 'Go!', clamp(EV.settings.beepVolume ?? .8, .1, 1));
+    else if (EV.settings.beeps !== false) { const vol = clamp(EV.settings.beepVolume ?? .6, .05, 1); if (n > 0) beep(880, .16, vol); else beep(1320, .85, vol); } };
   if (total === 0) { startRecording(); return; }
   bphase('countdown'); ring.style.transition = 'none'; ring.style.strokeDashoffset = 0; void ring.getBoundingClientRect(); ring.style.transition = '';
   paint();
@@ -1810,6 +1842,17 @@ const BACKUP = (() => {
 })();
 $('#hub-backup').onclick = () => BACKUP.backup(CUR);
 $('#hub-cloud').onclick = () => BACKUP.cloud(CUR);
+$('#hub-live').onclick = async () => {
+  const ev = CUR, m = $('#ls-msg'); $('#ls-body').classList.add('hidden'); m.textContent = 'Getting the links ready…'; $('#ls-sheet').classList.add('show');
+  try {
+    const l = await DRIVE.screens(ev, await DB.byEvent(ev.id)); m.textContent = ev.name;
+    $('#ls-code').textContent = l.short; $('#ls-tv').textContent = l.tv; $('#ls-live').textContent = l.live; $('#ls-body').classList.remove('hidden');
+    const text = `${ev.name}\nTV screen: ${l.tv}\nLaptop share station: ${l.live}`;
+    $('#ls-share').onclick = async () => { try { await navigator.share({ title: ev.name + ' — screens', text }); } catch (e) { if (e.name !== 'AbortError') $('#ls-copy').click(); } };
+    $('#ls-copy').onclick = async () => { try { await navigator.clipboard.writeText(text); toast('Links copied'); } catch { prompt('Copy the links', text); } };
+  } catch (e) { m.textContent = (e && e.message) || 'Could not get the links.'; }
+};
+$('#ls-close').onclick = () => $('#ls-sheet').classList.remove('show');
 $('#h-restore').onclick = () => $('#h-restore-file').click();
 $('#h-restore-file').onchange = e => { const f = e.target.files; BACKUP.restore(f).finally(() => { e.target.value = ''; }); };
 
@@ -2110,7 +2153,7 @@ const DRIVE = (() => {
   $('#qr-close').onclick = () => $('#qr-modal').classList.remove('show');
   async function updateButton() {
     await load(); const b = $('#r-qr'); if (!b) return; b.classList.toggle('hidden', !ready());
-    b.innerHTML = 'Share as<br>QR code'; $('#r-qrmsg').textContent = '';
+    $('#r-qrmsg').textContent = ''; $('#r-wabox').classList.add('hidden'); resetWA();
   }
   $('#r-qr').onclick = async () => {
     const b = $('#r-qr'), msg = $('#r-qrmsg'); if (!CLIP) return;
@@ -2120,6 +2163,50 @@ const DRIVE = (() => {
     catch (e) { msg.textContent = (e && e.message || 'Upload failed') + (e && e.status === 403 ? ' (Drive API not enabled?)' : ''); }
     finally { b.disabled = false; REV.paused = false; REV.left = EV.settings.autoReturn | 0; }
   };
+  /* TV slideshow and laptop share station (Party Machines Cloud) */
+  async function screens(ev, clips) {
+    await load(); if (!cfg.code) throw new Error('This needs Party Machines Cloud. Go to Home → Online QR sharing and type your booth code.');
+    if (!online()) throw new Error('No internet right now.');
+    const e = await cloudEvent(ev), links = await capi('short', { folder: e.folder });
+    retryPending(clips, ev);                                            // anything not uploaded yet goes up now
+    return links;
+  }
+  /* videos that could not upload (no internet) go up by themselves later */
+  let retrying = false;
+  async function retryPending(clips, ev) {
+    await load(); if (retrying || !cfg.auto || !(cfg.code || cfg.worker) || !online()) return; retrying = true;
+    try {
+      let todo;
+      if (clips) todo = clips.filter(c => !c.driveUrl).map(c => [c, ev]);
+      else { const since = Date.now() - 3 * 864e5, evs = (await DB.all('events')).filter(e => e.createdAt > since); todo = []; for (const e of evs) for (const c of await DB.byEvent(e.id)) if (!c.driveUrl) todo.push([c, e]); }
+      for (const [c, e] of todo) { if (!online()) break; try { await ensureLink(c, e); } catch (err) { console.warn('retry upload failed', err); break; } }
+    } finally { retrying = false; }
+  }
+  addEventListener('online', () => retryPending()); setInterval(() => { if (document.visibilityState === 'visible') retryPending(); }, 90000);
+  /* WhatsApp: the guest's number (or any chat) gets a message with their video link */
+  const waNumber = t => { let d = String(t || '').replace(/\D/g, ''); if (d.startsWith('00')) d = d.slice(2); if (/^0\d{9}$/.test(d)) d = '27' + d.slice(1); else if (/^[6-8]\d{8}$/.test(d)) d = '27' + d; return d.length >= 10 ? d : ''; };
+  const waText = url => { const st = EV.settings || {}; return `Here is your 360° video${EV.name ? ' from ' + EV.name : ''}! 🎉\n${url}${st.thanksSocial ? '\n' + st.thanksSocial : ''}`; };
+  function openWA(num, url) { const href = 'https://wa.me/' + (num || '') + '?text=' + encodeURIComponent(waText(url)); window.open(href, '_blank') || (location.href = href); }
+  $('#r-wa-go').onclick = async () => {
+    await load(); if (!ready()) { shareClip(); return; }                 // no online sharing: the share sheet also has WhatsApp
+    REV.paused = true; const box = $('#r-wabox'); box.classList.toggle('hidden'); if (!box.classList.contains('hidden')) { $('#r-wanum').value = ''; $('#r-wanum').focus(); box.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+    if (!CLIP.driveUrl && online()) ensureLink(CLIP, EV).catch(() => {});      // get the link ready while they type
+  };
+  async function waSend(num) {
+    const msg = $('#r-qrmsg'), go = $('#r-wasend'); if (!CLIP) return;
+    if (CLIP.driveUrl) { openWA(num, CLIP.driveUrl); waLog(num); return; }
+    if (!online()) { msg.textContent = 'No internet right now. Use AirDrop · Save, or try again when online.'; return; }
+    go.disabled = true;
+    try { await ensureLink(CLIP, EV, f => { msg.textContent = 'Getting the link ready… ' + Math.round(f * 100) + '%'; }); msg.textContent = 'Link ready — tap Open WhatsApp.'; go.textContent = 'Open WhatsApp ✓'; go.onclick = () => { openWA(num, CLIP.driveUrl); waLog(num); }; }
+    catch (e) { msg.textContent = (e && e.message) || 'Upload failed'; }
+    finally { go.disabled = false; }
+  }
+  async function waLog(num) {
+    if (num && CLIP && !CLIP.lead) { CLIP.lead = { email: '', whatsapp: '+' + num, consent: false, at: Date.now() }; await DB.put('clips', stripTmp(CLIP)); }
+    await logDelivery('whatsapp'); REV.paused = false; REV.left = EV.settings.autoReturn | 0;
+  }
+  const resetWA = () => { const go = $('#r-wasend'); go.textContent = 'Send to this number'; go.onclick = () => { const n = waNumber($('#r-wanum').value); if (!n) { $('#r-qrmsg').textContent = 'Type the full WhatsApp number, e.g. 082 123 4567.'; return; } waSend(n); }; };
+  $('#r-wapick').onclick = () => waSend('');
   /* settings sheet */
   const stat = (cls, t, d) => { $('#dr-stat').className = 'ledstat ' + cls; $('#dr-stat-t').textContent = t; $('#dr-stat-d').textContent = d || ''; };
   const refreshStat = () => cfg.code ? (stat('on', 'Party Machines Cloud', 'Checking…'), health().then(h => h.ok ? stat('on', 'Ready ✓', `Booth code ${cfg.code}${h.name ? ' · ' + h.name : ''}. Guests scan a QR code to get their video.`) : stat('warn', 'Not working', h.message))) : cfg.worker ? (stat('on', 'Always signed in', 'Using your Cloudflare helper — checking Google…'), health().then(h => h.ok ? stat('on', 'Always signed in', 'Google is connected. Guests get a Party Machines page for their video.') : stat('warn', h.expired ? 'Google login expired' : 'Not working', h.message))) : !cfg.clientId ? stat('', 'Not set up', 'Type your booth code below and tap Activate.') : valid() ? stat('on', 'Signed in', 'Videos can be uploaded.') : stat('warn', 'Sign in needed', 'Tap “Save & sign in”. Google sign-in lasts about an hour.');
@@ -2229,7 +2316,7 @@ const DRIVE = (() => {
     finally { b.disabled = false; b.textContent = 'QR code'; }
   };
   return {
-    updateButton, modalButton, gallery, putBackup, showQR, health,
+    updateButton, modalButton, gallery, putBackup, showQR, health, screens, retryPending,
     isReady: async () => { await load(); return ready(); },
     autoBackupOn: async () => { await load(); return !!cfg.autoBackup && ready() && online(); },
     /* called right after a video is saved: upload quietly if automatic upload is on and we are signed in */
