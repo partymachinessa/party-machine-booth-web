@@ -279,6 +279,7 @@ details.past .list-item{margin-top:8px;background:var(--panel2)}
   <button class="btn primary big" id="h-new">Start new event</button>
   <button class="btn ghost" id="h-defaults">Default settings &amp; PIN</button>
   <button class="btn" id="h-install" hidden>Install app</button>
+  <button class="btn ghost" id="h-install-help" hidden>How to install on this phone</button>
   <button class="btn ghost" id="h-drive">Online QR sharing</button>
   <div class="spacer"></div>
   <details class="past" id="h-past" open>
@@ -952,7 +953,7 @@ function renderPinCard() {
 
 /* ---------------- home ---------------- */
 const allEvents = async () => (await DB.all('events')).sort((a, b) => b.createdAt - a.createdAt);
-const APP_VERSION = '5.8';
+const APP_VERSION = '5.9';
 async function renderHome() {
   const evs = await allEvents();
   const rb = $('#h-resume'); rb.innerHTML = ''; const kid = localStorage.getItem('kiosk');
@@ -2021,6 +2022,18 @@ $('#m-del').onclick = async () => { if (!confirm('Delete this clip?')) return; a
   addEventListener('appinstalled', () => { installEv = null; const b = document.getElementById('h-install'); if (b) b.hidden = true; });
   { const b = document.getElementById('h-install'); if (b) b.onclick = async () => { if (!installEv) return; installEv.prompt(); try { await installEv.userChoice; } catch {} installEv = null; b.hidden = true; }; }
   await DB.open(); await loadSettings(); await loadAssets();
+  setTimeout(() => {
+    const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+    const hb = document.getElementById('h-install-help'), ib = document.getElementById('h-install');
+    if (!hb || standalone || (ib && !ib.hidden) || !/Android/i.test(navigator.userAgent)) return;
+    hb.hidden = false;
+    hb.onclick = () => {
+      const ua = navigator.userAgent, chrome = /Chrome\//.test(ua) && !/(EdgA|OPR|SamsungBrowser|MiuiBrowser|HeyTapBrowser|UCBrowser|Firefox|; wv\))/.test(ua);
+      alert(chrome
+        ? 'Tap the three dots (top right), then "Add to Home screen" or "Install app". If it is missing, the app may already be installed on this phone: look for "Booth" in your app list. Not in a private tab.'
+        : 'This browser cannot install the app. Open this same link in Google Chrome (install Chrome from the Play Store if needed), then tap the three dots > Install app.');
+    };
+  }, 4000);
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(r => r.update().catch(() => {})).catch(() => {});
     if (navigator.serviceWorker.controller) navigator.serviceWorker.addEventListener('controllerchange', () => { if (!sessionStorage.getItem('swr')) { sessionStorage.setItem('swr', '1'); if (B.phase === 'idle') location.reload(); } });
