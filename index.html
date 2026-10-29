@@ -264,6 +264,7 @@ details.past .list-item{margin-top:8px;background:var(--panel2)}
 #led-log{width:100%;min-height:110px;font:11px ui-monospace,Menlo,monospace;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px;color:var(--text)}
 #led-sheet .off{opacity:.45;pointer-events:none}
 @media (prefers-reduced-motion:reduce){.rings i,.recpill i{animation:none}}
+[hidden]{display:none!important}
 </style>
 </head>
 <body>
@@ -277,6 +278,7 @@ details.past .list-item{margin-top:8px;background:var(--panel2)}
   <div id="h-alert"></div>
   <button class="btn primary big" id="h-new">Start new event</button>
   <button class="btn ghost" id="h-defaults">Default settings &amp; PIN</button>
+  <button class="btn" id="h-install" hidden>Install app</button>
   <button class="btn ghost" id="h-drive">Online QR sharing</button>
   <div class="spacer"></div>
   <details class="past" id="h-past" open>
@@ -950,7 +952,7 @@ function renderPinCard() {
 
 /* ---------------- home ---------------- */
 const allEvents = async () => (await DB.all('events')).sort((a, b) => b.createdAt - a.createdAt);
-const APP_VERSION = '5.7';
+const APP_VERSION = '5.8';
 async function renderHome() {
   const evs = await allEvents();
   const rb = $('#h-resume'); rb.innerHTML = ''; const kid = localStorage.getItem('kiosk');
@@ -2014,6 +2016,10 @@ $('#m-del').onclick = async () => { if (!confirm('Delete this clip?')) return; a
 
 /* ---------------- boot ---------------- */
 (async function init() {
+  let installEv = null;
+  addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEv = e; const b = document.getElementById('h-install'); if (b) b.hidden = false; });
+  addEventListener('appinstalled', () => { installEv = null; const b = document.getElementById('h-install'); if (b) b.hidden = true; });
+  { const b = document.getElementById('h-install'); if (b) b.onclick = async () => { if (!installEv) return; installEv.prompt(); try { await installEv.userChoice; } catch {} installEv = null; b.hidden = true; }; }
   await DB.open(); await loadSettings(); await loadAssets();
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(r => r.update().catch(() => {})).catch(() => {});
